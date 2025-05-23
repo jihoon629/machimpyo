@@ -237,7 +237,7 @@ const HomePage = () => {
       <h4 className="guide-title">간단한 시작 가이드</h4>
 
       <div className="guide-item">
-        <img className="guide-icon" src="/images/A1.png" alt="지갑 등록" />
+        <img className="guide-icon" src="/images/A1.PNG" alt="지갑 등록" />
         <div className="guide-text">
           <strong className="guide-text-title">지갑 등록</strong>
           <p className="guide-text-sub">블록체인 지갑을 연결하여 신원을 안전하게 인증합니다.</p>
@@ -245,7 +245,7 @@ const HomePage = () => {
       </div>
 
       <div className="guide-item">
-        <img className="guide-icon" src="/images/A2.png" alt="유언장 생성" />
+        <img className="guide-icon" src="/images/A2.PNG" alt="유언장 생성" />
         <div className="guide-text">
           <strong className="guide-text-title">테스트 유언장 생성</strong>
           <p className="guide-text-sub">무료로 테스트 유언장을 작성해보세요.</p>
@@ -253,7 +253,7 @@ const HomePage = () => {
       </div>
 
       <div className="guide-item">
-        <img className="guide-icon" src="/images/A3.png" alt="공증 요청" />
+        <img className="guide-icon" src="/images/A3.PNG" alt="공증 요청" />
         <div className="guide-text">
           <strong className="guide-text-title">공증 요청</strong>
           <p className="guide-text-sub">작성한 유언장에 법적 효력을 부여하세요.</p>
@@ -270,7 +270,7 @@ const HomePage = () => {
     {/* 오른쪽 FAQ + 문의 */}
     <div className="faq-block">
       <h4 className="faq-title">
-  <img src="/images/D1.png" alt="자주 묻는 질문" className="faq-icon" />
+  <img src="/images/D1.PNG" alt="자주 묻는 질문" className="faq-icon" />
   자주 묻는 질문
 </h4>
       <div className="faq-question">
