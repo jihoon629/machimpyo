@@ -7,7 +7,7 @@ import MyPage from "../pages/MyPage";
 import RegisterPage from "../pages/RegisterPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import WillWritePage from "../pages/WillWritePage";
-
+import WillDetailPage from "../pages/WillDetailPage";
 
 const AppRouter = () => {
   return (
@@ -19,6 +19,7 @@ const AppRouter = () => {
         <Route path="/mypage" element={<MyPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/write" element={<WillWritePage />} />
+        <Route path="/Detail" element={<WillDetailPage />} />
       </Route>
 
       {/* NotFoundPage를 처리하는 라우트 */}
