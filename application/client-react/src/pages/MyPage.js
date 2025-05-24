@@ -1,7 +1,7 @@
 import React from 'react';
-import './MyPagecss/mypage.css';
+import './css/MyPagecss/mypage.css';
 
-const MyPage = () => {
+const MyPage = () => { //pr테스트용 주석
   return (
     <div className="mypage-container">
       {/* 프로필 상단 */}
