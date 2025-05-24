@@ -1,11 +1,11 @@
 import React from 'react';
-import './Homepagecss/HomePage.css';
-import './Homepagecss/HeroSection.css';
-import './Homepagecss/StepTimeline.css';
-import './Homepagecss/WhySection.css';
-import './Homepagecss/WillPreviewSection.css';
-import './Homepagecss/TestimonialsSection.css';
-import './Homepagecss/StartFooterSection.css';
+import './css/Homepagecss/HomePage.css';
+import './css/Homepagecss/HeroSection.css';
+import './css/Homepagecss/StepTimeline.css';
+import './css/Homepagecss/WhySection.css';
+import './css/Homepagecss/WillPreviewSection.css';
+import './css/Homepagecss/TestimonialsSection.css';
+import './css/Homepagecss/StartFooterSection.css';
 
 const HomePage = () => {
   const features = [
