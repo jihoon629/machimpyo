@@ -1,0 +1,314 @@
+/* ────────────────────────
+   전체 레이아웃
+──────────────────────── */
+.wdp-page {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  gap: 24px;
+}
+
+.content-wrap {
+  display: flex;
+  gap: 24px;
+}
+
+.wdp-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wdp-sidebar {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  padding: 16px;
+}
+
+/* ────────────────────────
+   헤더 카드 (3단)
+──────────────────────── */
+.header-card {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  gap: 16px;
+}
+
+.header-top,
+.header-middle,
+.header-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 중단에만 라인 추가 */
+.header-middle {
+  padding: 12px 0;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+}
+
+/* 제목 */
+.page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* 배지 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.badge.approved {
+  background: #f0fdfa;
+  color: #22c55e;
+  border: 1px solid #22c55e;
+}
+
+/* 날짜 */
+.subtitles span {
+  margin-right: 16px;
+  font-size: 13px;
+  color: #666;
+}
+
+/* 수정/삭제 버튼 */
+.action-buttons button {
+  margin-left: 12px;
+}
+
+.btn-outline {
+  font-size: 14px;
+  padding: 6px 14px;
+  border: 1px solid;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.btn-outline.purple {
+  color: #5f5ce6;
+  border-color: #5f5ce6;
+}
+
+.btn-outline.red {
+  color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+/* 메타 정보 */
+.header-meta {
+  gap: 24px;
+  font-size: 13px;
+  color: #555;
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon {
+  display: inline-block;
+  margin-right: 4px;
+}
+
+/* ────────────────────────
+   유언장 내용
+──────────────────────── */
+.content-card .card-body {
+  font-size: 14px;
+  color: #333;
+}
+
+.will-list {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+/* ────────────────────────
+   첨부 문서
+──────────────────────── */
+.attachment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.file-icon {
+  font-size: 18px;
+}
+
+.file-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-name {
+  font-size: 14px;
+}
+
+.file-size {
+  font-size: 12px;
+  color: #777;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* ────────────────────────
+   변경 이력
+──────────────────────── */
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+/* ────────────────────────
+   지정 열람자
+──────────────────────── */
+.reader-card-wrapper {
+  padding: 16px;
+}
+
+.reader-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.btn-text {
+  font-size: 13px;
+  color: #5f5ce6;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.reader-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reader-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+
+.reader-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.reader-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.reader-role {
+  font-size: 12px;
+  color: #666;
+}
+
+.reader-status {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.reader-status.approved {
+  color: #22c55e;
+}
+
+.reader-status.pending {
+  color: #fa8c16;
+}
+
+/* ────────────────────────
+   공증 상태
+──────────────────────── */
+.proof-card .proof-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.proof-info {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.6;
+}
+
+.btn-download {
+  width: 100%;
+  padding: 10px 0;
+  background: #f5f7ff;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  color: #5f5ce6;
+  text-align: center;
+  cursor: pointer;
+}
+
+/* ────────────────────────
+   보안 정보
+──────────────────────── */
+.security-card .security-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: #444;
+}
+
+.security-details div {
+  display: flex;
+  justify-content: space-between;
+}
