@@ -101,7 +101,7 @@ const HomePage = () => {
       </section>
 
 <section className="will-preview-section">
-  {/* ✅ 중앙 정렬된 제목/설명 */}
+  {/* 중앙 정렬된 제목/설명 */}
   <div className="preview-header">
     <h2 className="preview-title">유언장 미리보기</h2>
     <p className="preview-sub">
@@ -109,7 +109,7 @@ const HomePage = () => {
       한눈에 확인할 수 있습니다.
     </p>
   </div>
-  {/* ✅ 아래 본문: 좌우 배치 */}
+  {/* 아래 본문: 좌우 배치 */}
   <div className="preview-content">
     {/* 왼쪽 카드 */}
     <div className="preview-left">
