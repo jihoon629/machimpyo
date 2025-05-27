@@ -1,28 +1,38 @@
-import React,{ useState } from "react";
+import React from "react";
 import { Routes, Route } from "react-router-dom";
+
+// Layout
 import AppLayOut from "../Layout/AppLayOut";
+
+// Pages
 import HomePage from "../pages/HomePage";
 import LoginPage from "../pages/LoginPage";
 import MyPage from "../pages/MyPage";
 import RegisterPage from "../pages/RegisterPage";
-import NotFoundPage from "../pages/NotFoundPage";
 import WillWritePage from "../pages/WillWritePage";
 import WillDetailPage from "../pages/WillDetailPage";
+import NotFoundPage from "../pages/NotFoundPage";
 
 const AppRouter = () => {
   return (
     <Routes>
-      {/* AppLayout을 기본 레이아웃으로 적용 */}
+      {/* Main App Layout - All pages below share the AppLayOut */}
       <Route element={<AppLayOut />}>
+        {/* Public Routes */}
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/mypage" element={<MyPage />} />
         <Route path="/register" element={<RegisterPage />} />
+
+        {/* User Routes */}
+        <Route path="/mypage" element={<MyPage />} />
+
+        {/* Will Routes */}
         <Route path="/write" element={<WillWritePage />} />
-        <Route path="/Detail" element={<WillDetailPage />} />
+        {/* Dynamic route for Will detail, supports backend integration */}
+        <Route path="/will/:willId" element={<WillDetailPage />} />
       </Route>
 
-      {/* NotFoundPage를 처리하는 라우트 */}
+      {/* Catch-All Not Found Page */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
