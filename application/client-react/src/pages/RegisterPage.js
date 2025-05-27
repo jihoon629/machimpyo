@@ -6,10 +6,6 @@ const RegisterPage = () => {
   const [gender, setGender] = useState('male');
   const [birthType, setBirthType] = useState('solar');
 
-  const handleAddressSearch = () => {
-    alert('우편번호 검색 팝업을 띄웁니다.');
-  };
-
   return (
     <div className="page-wrapper">
       <div className="content">
@@ -72,7 +68,7 @@ const RegisterPage = () => {
               <button
                 type="button"
                 className="button"
-                onClick={handleAddressSearch}
+                
               >
                 주소검색
               </button>
@@ -170,7 +166,6 @@ const RegisterPage = () => {
             {/* 생년월일 */}
             <div className="row">
               <label className="label required">생년월일</label>
-
               <input className="input" type="text" placeholder="년" style={{ maxWidth: '80px' }} />
               <input className="input" type="text" placeholder="월" style={{ maxWidth: '50px' }} />
               <input className="input" type="text" placeholder="일" style={{ maxWidth: '50px' }} />
