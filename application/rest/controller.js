@@ -90,8 +90,67 @@ async function getWillDetails(req, res, next) {
 }
 
 
+// 유언장과 이미지 함께 등록 컨트롤러 (여러 이미지 처리를 위해 수정)
+async function registerWillWithImage(req, res, next) {
+    const { title, originalContent, beneficiaries, testatorId } = req.body;
+    const imageFiles = req.files; // multer가 req.files에 업로드된 파일 객체 배열을 추가
+
+    // 기본적인 텍스트 입력 값 검증
+    if (!title || !originalContent || !testatorId) {
+        const error = new Error('Missing required text fields: title, originalContent, and testatorId are required.');
+        error.status = 400;
+        return next(error);
+    }
+
+    // 이미지 파일 배열 검증 (하나 이상의 파일이 있는지 확인)
+    // (service.js에서도 유사한 검사를 하지만, 컨트롤러에서 먼저 간단히 확인)
+    if (!imageFiles || imageFiles.length === 0) {
+        const error = new Error('At least one image file is required.');
+        error.status = 400;
+        return next(error);
+    }
+    // 각 파일의 유효성은 service 계층에서 더 자세히 검사
+
+    try {
+        // 서비스 함수 호출 시 imageFiles 배열을 전달
+        const result = await willService.registerWillWithImagesService( // 서비스 함수 이름은 그대로 유지 (내부 로직만 변경됨)
+            title,
+            originalContent,
+            beneficiaries, 
+            testatorId,
+            imageFiles // req.files (파일 배열) 전달
+        );
+        res.status(201).json({ // 응답 메시지 및 내용 업데이트 (선택 사항)
+            message: 'Will with image(s) registered successfully.',
+            blockchainWillId: result.blockchainWillId, // service.js의 반환값에 맞춤
+            dbRecordId: result.dbRecordId             // service.js의 반환값에 맞춤
+        });
+    } catch (error) {
+        console.error(`Controller Error in registerWillWithImage: ${error.message}`);
+        next(error);
+    }
+}
+
+// 이미지 직접 제공 컨트롤러 (선택적) - getWillImageService 파라미터 변경에 따라 수정
+async function getWillImage(req, res, next) {
+    const { imageRecordId } = req.params; // 라우트에서 :imageRecordId 로 받는다고 가정
+    try {
+        // 서비스 함수 getWillImageService는 이제 WillImages 테이블의 ID를 받음
+        const { buffer, mimeType, fileName } = await willService.getWillImageService(imageRecordId);
+        res.setHeader('Content-Type', mimeType);
+        // res.setHeader('Content-Disposition', `inline; filename="${fileName}"`); // 브라우저에서 파일명 표시 (선택 사항)
+        res.send(buffer);
+    } catch (error) {
+        console.error(`Controller Error in getWillImage for ImageRecordID ${imageRecordId}: ${error.message}`);
+        next(error);
+    }
+}
+
+
 module.exports = {
     registerWill,
     getMyWills,
-    getWillDetails
+    getWillDetails,
+    registerWillWithImage, // 이름은 그대로, 내부 호출만 변경
+    getWillImage,
 };
