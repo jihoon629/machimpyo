@@ -9,7 +9,6 @@ export default function WillList({ onSelect }) {
     const navigate = useNavigate();
     const [username, setUsername] = useState('');
 
-    // 컴포넌트 마운트 시 세션에서 username 가져오기
     useEffect(() => {
         const storedUsername = sessionStorage.getItem('username');
         if (storedUsername) {
@@ -19,20 +18,17 @@ export default function WillList({ onSelect }) {
             setStatus("로그인이 필요합니다. 사용자 이름을 세션에서 찾을 수 없습니다.");
             console.warn("WillList: Username not found in session storage.");
         }
-    }, []); // 빈 배열을 전달하여 컴포넌트 마운트 시 한 번만 실행
+    }, []);
 
     const handleFetch = async () => {
-        // username 상태를 직접 사용하므로, 파라미터로 받을 필요 없음
         if (!username) {
             setStatus('사용자 이름을 가져올 수 없습니다. 먼저 로그인해주세요.');
-            // 이 함수는 username이 설정된 후에만 호출될 것이므로,
-            // 이 조건은 추가적인 방어 로직으로 볼 수 있습니다.
             return;
         }
         setStatus('조회 중...');
         try {
-            const willsData = await willService.getMyWills(username); // API 응답이 바로 데이터라고 가정 (이전 코드와 일관성)
-            console.log("WillList: Response from getMyWills:", willsData);
+            const willsData = await willService.getMyWills(username);
+            console.log("WillList: Response from getMyWills:", willsData); // 이 로그는 유지하여 데이터 확인
 
             if (Array.isArray(willsData) && willsData.length > 0) {
                 setList(willsData);
@@ -47,38 +43,44 @@ export default function WillList({ onSelect }) {
             }
         } catch (err) {
             console.error('WillList: Error fetching wills:', err);
-            // err.data는 axios 에러 응답의 일부일 수 있음 (err.response.data)
             const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || '알 수 없는 오류';
             setStatus('조회 실패: ' + errorMessage);
             setList([]);
         }
     };
     
-    // username 상태가 설정되면 자동으로 유언장 목록 조회
     useEffect(() => {
-        if (username) { // username이 세션에서 성공적으로 로드되었을 때만 실행
+        if (username) {
             handleFetch();
         }
-        // username이 비어있으면 (초기 상태 또는 세션에 없을 때) handleFetch를 호출하지 않음
-    }, [username]); // username이 변경될 때마다 이 useEffect 실행
+    }, [username]);
 
     const filteredList = list.filter(item => {
-        const id = item.willID || item.Key || '';
-        const title = item.title || '';
+        // 실제 데이터 구조에 맞춰 필드명 사용
+        const idValue = item.id || '';         // 'id' (소문자) 사용
+        const titleValue = item.title || '';   // 'title' 사용
         const keyword = searchTerm.toLowerCase();
         return (
-            id.toLowerCase().includes(keyword) ||
-            title.toLowerCase().includes(keyword)
+            idValue.toLowerCase().includes(keyword) ||
+            titleValue.toLowerCase().includes(keyword)
         );
     });
 
-    const handleItemClick = (willId) => {
-        if (willId) {
-            if (onSelect) {
+    const handleItemClick = (willId) => { // 파라미터 이름은 그대로 willId 사용
+        console.log("WillList: Item clicked. ID to navigate/select:", willId);
+        console.log("WillList: onSelect prop exists:", typeof onSelect === 'function');
+
+        if (willId) { // willId가 유효한 값인지 확인 (undefined, null, 빈 문자열이 아닌지)
+            if (typeof onSelect === 'function') {
+                console.log("WillList: Calling onSelect with ID:", willId);
                 onSelect(willId);
             } else {
+                console.log("WillList: Navigating to /detail/" + willId);
                 navigate(`/detail/${willId}`);
             }
+        } else {
+            console.warn("WillList: Clicked item has no valid ID to navigate or select. Received ID:", willId);
+            setStatus("선택한 항목의 ID가 올바르지 않아 상세 페이지로 이동할 수 없습니다.");
         }
     };
 
@@ -87,8 +89,6 @@ export default function WillList({ onSelect }) {
             <h3>나의 유언장 목록 조회</h3>
             {username ? (
                 <>
-                    {/* "조회하기" 버튼 제거 */}
-                    {/* <button className="btn btn-info mb-2" onClick={handleFetch}>조회하기</button> */}
                     <input
                         className="form-control mb-2"
                         placeholder="검색어를 입력하세요 (ID 또는 제목)"
@@ -96,23 +96,18 @@ export default function WillList({ onSelect }) {
                         onChange={e => setSearchTerm(e.target.value)}
                     />
                 </>
-            ) : (
-                // username이 없으면 로그인하라는 메시지는 status에 이미 표시될 수 있음
-                // 여기서는 status 메시지에 의존하거나, 별도의 메시지를 유지할 수 있음
-                // <p>유언장을 조회하려면 먼저 로그인해주세요.</p> // 이 메시지는 setStatus로 관리되므로 중복될 수 있음
-                null // 또는 status 메시지가 이미 "로그인이 필요합니다..." 등을 표시하므로 여기선 아무것도 표시 안 함
-            )}
-            <p>{status}</p> {/* 상태 메시지 (예: "조회 중...", "X개의 유언장이 조회되었습니다.", "로그인이 필요합니다.") */}
+            ) : null}
+            <p>{status}</p>
             {list.length > 0 && (
                  <ul className="list-group">
                  {filteredList.map((item, idx) => (
                      <li
-                         key={item.willID || item.Key || idx}
+                         key={item.id || idx} // key 값으로 item.id 사용
                          className="list-group-item list-group-item-action"
                          style={{ cursor: 'pointer' }}
-                         onClick={() => handleItemClick(item.willID || item.Key)}
+                         onClick={() => handleItemClick(item.id)} // onClick 시 item.id 전달
                      >
-                         <strong>ID:</strong> {item.willID || item.Key}<br />
+                         <strong>ID:</strong> {item.id}<br /> {/* 화면 표시도 item.id 사용 */}
                          <strong>제목:</strong> {item.title || '제목 없음'}
                      </li>
                  ))}
