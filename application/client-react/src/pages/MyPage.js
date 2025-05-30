@@ -1,44 +1,7 @@
-import React, { useState, useEffect } from 'react'; // useState, useEffect import
-import willService from '../services/willService'; // willService import (경로 확인)
-import './MyPagecss/mypage.css';
+import React from 'react';
+import './css/MyPagecss/mypage.css';
 
-const MyPage = () => {
-  const [userRealName, setUserRealName] = useState('');
-  const [username, setUsername] = useState('');
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true); // 프로필 정보 로딩 상태
-  const [profileError, setProfileError] = useState('');
-
-  useEffect(() => {
-    const storedUsername = sessionStorage.getItem('username');
-    if (storedUsername) {
-      setUsername(storedUsername); // 세션의 username 상태에 저장
-      setIsLoadingProfile(true); // 로딩 시작
-      willService.queryByName(storedUsername)
-        .then(response => {
-          setUserRealName(response.data.realName || storedUsername); // 실명 또는 username
-          setIsLoadingProfile(false);
-        })
-        .catch(err => {
-          console.error("실명 조회 실패:", err);
-          setProfileError('실명 정보를 불러오는 데 실패했습니다.');
-          setUserRealName(storedUsername); // 에러 시 username 표시
-          setIsLoadingProfile(false);
-        });
-    } else {
-      setProfileError('로그인 정보가 없습니다.');
-      setIsLoadingProfile(false);
-    }
-  }, []); // 컴포넌트 마운트 시 한 번만 실행
-
-
-  // 로그아웃 함수 (AppLayout.js의 로그아웃과 유사하게 필요시 구현)
-  // const handleLogout = () => {
-  //   sessionStorage.removeItem('username');
-  //   sessionStorage.removeItem('userId');
-  //   // navigate('/'); // 예시: 홈으로 이동
-  //   window.location.reload(); // 페이지 새로고침하여 AppLayout 등에서 상태 반영
-  // };
-
+const MyPage = () => { //pr테스트용 주석
   return (
     <div className="mypage-container">
       {/* 프로필 상단 */}
@@ -46,14 +9,9 @@ const MyPage = () => {
         <div className="profile-info">
           <img src="/images/kim.PNG" alt="프로필 사진" className="profile-image" />
           <div className="profile-text">
-            {isLoadingProfile ? (
-              <strong className="profile-name">로딩 중...</strong>
-            ) : profileError ? (
-              <strong className="profile-name" style={{ color: 'red' }}>{username || '오류'}</strong>
-            ) : (
-              <strong className="profile-name">{userRealName}</strong>
-            )}
-            {username && <p className="profile-username-display">({username})</p>}
+            <strong className="profile-name">김용현</strong>
+            <p className="profile-email">kim.yh@example.com</p>
+            <span className="profile-date">가입일: 2023년 8월</span>
           </div>
         </div>
         <button className="edit-profile-button">프로필 수정</button>
@@ -157,7 +115,6 @@ const MyPage = () => {
           </div>
 
           {/* 로그아웃 버튼 */}
-          {/* <button className="logout-button" onClick={handleLogout}> */}
           <button className="logout-button">
             <img src="/images/E8.PNG" alt="로그아웃 아이콘" className="icon" />
             로그아웃
