@@ -12,6 +12,10 @@ import RegisterPage from "../pages/RegisterPage";
 import WillWritePage from "../pages/WillWritePage";
 import WillDetailPage from "../pages/WillDetailPage";
 import NotFoundPage from "../pages/NotFoundPage";
+import WillList from "../pages/WillList";
+import WillDetails from "../pages/WillDetails";
+import UserProfileComponent from "../pages/UserProfileComponent";
+import UserMyPage from "../pages/MyPage";
 
 const AppRouter = () => {
   return (
@@ -30,6 +34,11 @@ const AppRouter = () => {
         <Route path="/write" element={<WillWritePage />} />
         {/* Dynamic route for Will detail, supports backend integration */}
         <Route path="/will/:willId" element={<WillDetailPage />} />
+        <Route path="/success" element={<WillList/>}/>
+        <Route path="/detail/:willId" element={<WillDetails />} />
+        <Route path="/name" element={<UserProfileComponent />} />
+        <Route path="/MyPage" element={<UserMyPage />} />
+
       </Route>
 
       {/* Catch-All Not Found Page */}

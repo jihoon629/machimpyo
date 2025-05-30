@@ -1,9 +1,10 @@
 basic-network/bin
 application/node_modules
+application/client-react/node_modules
 application/connection-org1.json
 application/wallet
 chaincode/abstore/go/go
-
+application/dev-mode-react/node_modules
 basic-network/channel-artifacts
 basic-network/organizations/ordererOrganizations
 basic-network/organizations/peerOrganizations
@@ -16,4 +17,4 @@ basic-network/organizations/fabric-ca/org3
 explorer/pgdata
 explorer/wallet
 
-chaincode/abstore/go/vendor
+chaincode/abstore/go/vendorapplication/rest/gcp-credentials.json
