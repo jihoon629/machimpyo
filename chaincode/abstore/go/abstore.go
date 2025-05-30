@@ -136,10 +136,9 @@ func (s *ABstore) GetWillDetails(ctx contractapi.TransactionContextInterface, wi
 	if willID == "" {
 		return nil, fmt.Errorf("willID cannot be empty")
 	}
-    if username == "" { // username 유효성 검사 추가
+    if username == "" { 
         return nil, fmt.Errorf("username for access control cannot be empty")
     }
-
 
 	willJSON, err := ctx.GetStub().GetState(willID)
 	if err != nil {
@@ -155,13 +154,18 @@ func (s *ABstore) GetWillDetails(ctx contractapi.TransactionContextInterface, wi
 		return nil, fmt.Errorf("failed to unmarshal JSON for will '%s': %w", willID, err)
 	}
 
-	// 접근 제어: 요청한 사용자가 유언자 본인인지 확인
 	if will.TestatorID != username {
 		return nil, fmt.Errorf("access denied: user '%s' is not the testator ('%s') of will '%s'", username, will.TestatorID, willID)
 	}
 
-	fmt.Printf("ABstore.GetWillDetails: Successfully retrieved will ID '%s' (Testator: '%s') for user '%s'\n", willID, will.TestatorID, username)
-	return &will, nil // Will 객체에 Images 필드가 포함되어 반환됨
+	// Images 필드가 nil인 경우 실제 타입에 맞게 빈 슬라이스로 초기화
+	if will.Images == nil {
+		fmt.Printf("ABstore.GetWillDetails: Initializing nil Images field to empty slice for Will ID '%s'\n", will.ID)
+		will.Images = make([]ImageMetadata, 0) // 포인터(*) 제거하여 타입 일치시킴
+	}
+
+	fmt.Printf("ABstore.GetWillDetails: Successfully retrieved will ID '%s' (Testator: '%s', Images count: %d) for user '%s'\n", willID, will.TestatorID, len(will.Images), username)
+	return &will, nil
 }
 
 // GetMyWills retrieves all wills created by the calling user (testator).
@@ -201,6 +205,10 @@ func (s *ABstore) GetMyWills(ctx contractapi.TransactionContextInterface, userna
 
 		// 필터링 조건: ObjectType이 "Will"이고 (대소문자 일치 확인), TestatorID가 파라미터와 일치
 		if will.ObjectType == "Will" && will.TestatorID == usernameAsTestatorID {
+			// Images 필드가 nil인 경우 빈 슬라이스로 초기화
+			if will.Images == nil {
+				will.Images = make([]ImageMetadata, 0) // 포인터(*) 제거
+			}
 			myWills = append(myWills, &will)
 		}
 	}
