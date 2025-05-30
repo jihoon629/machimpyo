@@ -1,102 +1,50 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // useNavigate 훅 import
-import willService from '../services/willService'; // willService import
-import './LoginPageCss/LoginPage.css'; // CSS 파일 import
+import { FaRegCheckCircle, FaCheckCircle, FaLock } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
+import './css/LoginPagecss/LoginPage.css';
 
 const LoginPage = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate(); // useNavigate 인스턴스 생성
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setIsLoading(true);
-    setMessage('');
-
-    if (!username || !password) {
-      setMessage('사용자 이름과 비밀번호를 모두 입력해주세요.');
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const response = await willService.loginUser({ username, password });
-      const data = response.data; // axios는 data 객체에 응답 본문을 담아줍니다.
-
-      // 성공적인 응답 (보통 HTTP 200 OK)
-      setMessage(`로그인 성공! 사용자 ID: ${data.userId || data.message}`);
-      sessionStorage.setItem('username', username); // 세션에 username 저장
-
-      navigate('/', { state: { userLoggedIn: true } });
-
-    } catch (error) {
-      console.error('로그인 요청 중 에러 발생:', error);
-      if (error.response && error.response.data && error.response.data.error) {
-        setMessage(error.response.data.error);
-      } else {
-        setMessage('로그인 중 오류가 발생했습니다. 네트워크 연결을 확인해주세요.');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [saveId, setSaveId] = useState(false);
 
   return (
-    // <div style={styles.container}>
     <div className="login-container">
-      <h2>로그인</h2>
-      <form onSubmit={handleSubmit}>
-        {/* <div style={styles.formGroup}> */}
-        <div className="login-form-group">
-          {/* <label htmlFor="username" style={styles.label}>사용자 이름:</label> */}
-          <label htmlFor="username" className="login-label">사용자 이름:</label>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            // style={styles.input}
-            className="login-input"
-            disabled={isLoading}
-          />
-        </div>
-        {/* <div style={styles.formGroup}> */}
-        <div className="login-form-group">
-          {/* <label htmlFor="password" style={styles.label}>비밀번호:</label> */}
-          <label htmlFor="password" className="login-label">비밀번호:</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            // style={styles.input}
-            className="login-input"
-            disabled={isLoading}
-          />
-        </div>
-        <button
-          type="submit"
-          // style={isLoading ? {...styles.button, ...styles.buttonDisabled} : styles.button}
-          className="login-button"
-          disabled={isLoading}
-        >
-          {isLoading ? '로그인 중...' : '로그인'}
-        </button>
-      </form>
-      {message && (
+      <div className="login-subtext">삶의 마지막을 장식하는</div>
+      <div className="login-title-wrapper">
+        <div className="login-line" />
+        <h1 className="login-title-text">마침표</h1>
+        <div className="login-line" />
+      </div>
 
-        <div className={
-            message.startsWith('로그인 성공') ?
-            "login-message login-success-message" :
-            "login-message"
-        }>
-          {message}
+      <input className="login-input" type="text" placeholder="아이디" />
+      <input className="login-input" type="password" placeholder="비밀번호" />
+
+      <div className="login-option-group">
+        <div
+          className="login-option-item"
+          onClick={() => setSaveId(!saveId)}
+        >
+          {saveId
+            ? <FaCheckCircle color="#574bff" />
+            : <FaRegCheckCircle color="#ccc" />
+          }
+          아이디 저장
         </div>
-      )}
+        <div className="login-option-item">
+          <FaLock color="#e74c3c" /> 보안 접속
+        </div>
+      </div>
+
+      <button className="login-button">로그인</button>
+
+      <div className="login-find-links">
+        <a href="#">아이디 찾기</a>|
+        <a href="#">비밀번호 찾기</a>
+      </div>
+
+      <div className="login-signup-box">
+        <span>아직 회원이 아니신가요?</span>
+        <Link to="/register">회원가입</Link>
+      </div>
     </div>
   );
 };
