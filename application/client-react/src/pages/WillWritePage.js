@@ -1,37 +1,322 @@
-// ... (기존 import 구문들)
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react"; // useEffect 추가
+import styled from "styled-components";
 import { FaUpload } from "react-icons/fa";
-import './WillWritePageCss/WillWritePage.css'; // CSS 파일 경로는 실제 프로젝트 구조에 맞게 확인해주세요.
 import { useNavigate } from 'react-router-dom';
-import willService from '../services/willService'; // willService 임포트 확인
+import willService from '../services/willService';
 
+// Styled-components 정의 (중복 제거 및 필요한 것만 남김)
+const Container = styled.div`
+  max-width: 960px;
+  margin: 40px auto;
+  padding: 24px;
+`;
 
+const Title = styled.h2`
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  margin-top: 0;
+`;
+
+const Subtitle = styled.div`
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 10px;
+  margin-top: 0;
+  letter-spacing: -0.01em;
+`;
+
+const StepProgress = styled.div`
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  margin-bottom: 48px;
+  padding: 0 12px;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 18px;
+    left: 12px;
+    right: 12px;
+    height: 4px;
+    background: #e5e7eb;
+    z-index: 0;
+    border-radius: 2px;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 18px;
+    left: 12px;
+    width: calc(((100% - 24px) / 3) * var(--progress)); /* 4단계이므로 3개의 구간 */
+    height: 4px;
+    background: #6366f1;
+    z-index: 1;
+    border-radius: 2px;
+  }
+
+  .step-item {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    cursor: default;
+
+    .circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background-color: #e5e7eb;
+      color: #666;
+      font-weight: 700;
+      line-height: 36px;
+      text-align: center;
+      margin-bottom: 8px;
+      user-select: none;
+    }
+
+    &.active .circle {
+      background-color: #6366f1;
+      color: white;
+    }
+
+    .step-name {
+      font-size: 14px;
+      color: #666;
+      user-select: none;
+    }
+
+    &.active .step-name {
+      color: #111827;
+      font-weight: 700;
+    }
+  }
+`;
+
+const Section = styled.div`
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+`;
+
+const Label = styled.div`
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 24px;
+`;
+
+const InlineInputs = styled.div`
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+`;
+
+const Input = styled.input`
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  width: 100%; 
+  box-sizing: border-box;
+`;
+
+const TextArea = styled.textarea`
+  width: 100%;
+  height: 200px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  resize: none;
+  font-size: 14px;
+  box-sizing: border-box;
+`;
+
+const UploadButton = styled.label`
+  margin-top: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 1px solid #6366f1;
+  background: transparent;
+  color: #6366f1;
+  transition: background-color 0.2s, color 0.2s;
+  display: inline-block; 
+
+  &:hover {
+    background: #6366f1;
+    color: white;
+  }
+`;
+
+const UploadInput = styled.input`
+  display: none;
+`;
+
+const UploadBoxLabel = styled.label`
+  border: 1px dashed #ccc;
+  padding: 32px;
+  text-align: center;
+  color: #777;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 16px;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+`;
+
+const FileNameList = styled.ul`
+  margin-top: 12px;
+  list-style: none;
+  padding-left: 0;
+  font-size: 14px;
+  color: #444;
+`;
+
+const FileNameItem = styled.li`
+`;
+
+const FilePreviewArea = styled.div`
+  margin-top: 16px;
+`;
+
+const PreviewTitle = styled.h4`
+  font-size: 15px;
+  margin-bottom: 8px;
+  color: #333;
+`;
+
+const ViewerItem = styled.div`
+  background: #f9fafb;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #111827;
+`;
+
+const AddViewerButton = styled.button`
+  margin-top: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 1px solid #6366f1;
+  background: transparent;
+  color: #6366f1;
+  transition: background-color 0.2s, color 0.2s;
+
+  &:hover {
+    background: #6366f1;
+    color: white;
+  }
+`;
+
+const CheckboxLabel = styled.label`
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+  font-size: 14px;
+  color: #111827;
+
+  input {
+    margin-right: 8px;
+  }
+`;
+
+const ButtonWrap = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 32px;
+  gap: 12px;
+`;
+
+const Button = styled.button`
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+
+  &.save {
+    background: transparent;
+    border: 1px solid #6366f1;
+    color: #6366f1;
+  }
+  &.save:hover {
+    background: #6366f1;
+    color: white;
+  }
+  &.submit {
+    background: #6366f1;
+    color: white;
+    border: none;
+  }
+  &.submit:hover {
+    background: #4f46e5;
+  }
+  &:disabled {
+    background-color: #ccc;
+    color: #666;
+    cursor: not-allowed;
+    border-color: #ccc;
+  }
+  &.submit:disabled:hover {
+    background: #ccc;
+  }
+`;
+
+const ApiMessage = styled.div`
+  margin-top: 10px;
+  text-align: center;
+  font-size: 0.9em;
+  &.error {
+    color: red;
+  }
+  &.success {
+    color: green;
+  }
+`;
+
+// 상세 로직을 포함한 WillWritePage 컴포넌트
 const WillWritePage = () => {
   const navigate = useNavigate();
-  const [viewers, setViewers] = useState([]);
-  const [blockchain, setBlockchain] = useState(false); // 이 상태는 현재 handleSubmit에서 직접 사용되지 않음
-  const [publicReq, setPublicReq] = useState(false); // 이 상태는 현재 handleSubmit에서 직접 사용되지 않음
-  
-  // 여러 이미지 파일을 위한 상태로 변경
-  const [imageFilesToUpload, setImageFilesToUpload] = useState([]); // 단일 파일 -> 파일 배열
-  
+  const [viewers, setViewers] = useState([]); // 초기 열람자 예시는 필요시 추가
+  const [blockchain, setBlockchain] = useState(false);
+  const [publicReq, setPublicReq] = useState(false);
+  const [imageFilesToUpload, setImageFilesToUpload] = useState([]);
   const [content, setContent] = useState("");
-  const [currentStep, setCurrentStep] = useState(1); // UI 진행 상태 표시용
+  const [currentStep, setCurrentStep] = useState(1);
   const [willTitle, setWillTitle] = useState("");
-  
-  const [testatorDisplayRealName, setTestatorDisplayRealName] = useState(""); 
-  const [sessionUsername, setSessionUsername] = useState(""); 
+  const [testatorDisplayRealName, setTestatorDisplayRealName] = useState("");
+  const [sessionUsername, setSessionUsername] = useState("");
   const [isLoadingRealName, setIsLoadingRealName] = useState(true);
-
-  const [apiStatus, setApiStatus] = useState({
-    loading: false,
-    error: null,
-    data: null,
-  });
+  const [apiStatus, setApiStatus] = useState({ loading: false, error: null, data: null });
   const [ocrInProgress, setOcrInProgress] = useState(false);
   const [ocrError, setOcrError] = useState(null);
-  const [uploadedFileNames, setUploadedFileNames] = useState([]); // 화면 표시용 파일 이름들
-
+  const [uploadedFileNames, setUploadedFileNames] = useState([]);
 
   useEffect(() => {
     const usernameFromSession = sessionStorage.getItem('username');
@@ -45,38 +330,25 @@ const WillWritePage = () => {
         })
         .catch(error => {
           console.error("실명 조회 실패:", error);
-          setTestatorDisplayRealName(usernameFromSession); // 실패 시 username으로 대체
+          setTestatorDisplayRealName(usernameFromSession);
           setIsLoadingRealName(false);
         });
     } else {
-      setTestatorDisplayRealName("로그인 필요"); // 또는 로그인 페이지로 리다이렉트
+      setTestatorDisplayRealName("로그인 필요");
       setIsLoadingRealName(false);
-      // navigate('/login'); // 예시: 로그인 안되어 있으면 로그인 페이지로
+      // navigate('/login'); // 필요시 로그인 페이지로 리다이렉트
     }
-  }, []); // navigate를 의존성 배열에 추가하면 로그인/로그아웃 시 동작이 달라질 수 있으므로 주의
+  }, []);
 
   const handleFileChange = async (e) => {
-    const newFiles = Array.from(e.target.files); // 새로 선택된 파일들
-    console.log("Newly selected files:", newFiles);
-    console.log("Number of newly selected files:", newFiles.length);
-
+    const newFiles = Array.from(e.target.files);
     if (newFiles.length > 0) {
-      // 기존 파일 목록과 새로 선택된 파일 목록을 합칩니다.
-      // 중복 파일 처리가 필요하다면 여기서 로직을 추가할 수 있습니다. (예: 파일 이름으로 비교)
-      // 현재는 단순 병합합니다.
       const updatedFilesToUpload = [...imageFilesToUpload, ...newFiles];
       const updatedFileNames = updatedFilesToUpload.map(f => f.name);
-
-      console.log("Updated files to upload:", updatedFilesToUpload);
-      console.log("Updated file names for display:", updatedFileNames);
-
       setImageFilesToUpload(updatedFilesToUpload);
       setUploadedFileNames(updatedFileNames);
 
-      // OCR은 여전히 첫 번째 파일 또는 새로 추가된 파일 중 첫 번째 등으로 정책 결정
-      const fileToProcessForOCR = newFiles[0]; // 새로 추가된 파일 중 첫 번째로 OCR 진행
-                                            // 또는 updatedFilesToUpload[0] (전체 목록의 첫 번째) 등
-      
+      const fileToProcessForOCR = newFiles[0];
       setOcrInProgress(true);
       setOcrError(null);
       try {
@@ -98,102 +370,81 @@ const WillWritePage = () => {
         setOcrInProgress(false);
       }
     }
-    // 파일 선택을 취소한 경우 (newFiles.length === 0) 또는
-    // 파일을 선택하지 않고 '취소'를 누른 경우에는 기존 상태를 유지하거나 초기화할 수 있습니다.
-    // 현재는 newFiles.length > 0 일 때만 상태를 업데이트하므로, 파일 선택 취소 시에는 아무 변화 없음.
-    // 만약 선택 취소 시 모든 선택을 초기화하고 싶다면 아래 주석 해제:
-    // else if (e.target.files.length === 0) { // 사용자가 파일 선택 창에서 '취소'를 누른 경우
-    //   setImageFilesToUpload([]);
-    //   setUploadedFileNames([]);
-    // }
   };
 
   const handleContentChange = (e) => {
     const value = e.target.value;
     setContent(value);
-    // 내용 입력 시 다음 단계로 자동 이동 로직 (선택 사항)
     if (value.trim() !== "" && currentStep < 2 && willTitle.trim() !== "" && testatorDisplayRealName.trim() !== "" && testatorDisplayRealName !== "로그인 필요") {
+      setCurrentStep(2);
+    }
+  };
+  
+  const handleTitleChange = (e) => {
+    const value = e.target.value;
+    setWillTitle(value);
+    if (value.trim() !== "" && currentStep < 2 && content.trim() !== "" && testatorDisplayRealName.trim() !== "" && testatorDisplayRealName !== "로그인 필요") {
       setCurrentStep(2);
     }
   };
 
   const handleAddViewer = () => {
-    const newViewer = { name: "새 열람자", desc: "관계", id: "0xNew...5678" }; // id는 실제로는 고유해야 함
-    setViewers((prev) => {
-        const validPrevViewers = Array.isArray(prev) ? prev.filter(v => v && v.name && v.id) : []; // prev가 배열인지 확인
-        return [...validPrevViewers, newViewer];
-    });
-    // 열람자 추가 시 다음 단계로 자동 이동 로직 (선택 사항)
-    if (currentStep < 3 && content.trim() !== "" && willTitle.trim() !== "" && testatorDisplayRealName.trim() !== "" && testatorDisplayRealName !== "로그인 필요") {
+    const newViewer = { name: "새 열람자", desc: "관계", id: `0xNew...${Math.random().toString(16).slice(2,10)}` };
+    setViewers(prev => Array.isArray(prev) ? [...prev.filter(v => v && v.name && v.id), newViewer] : [newViewer]);
+    if (currentStep < 3 && willTitle.trim() !== "" && content.trim() !== "" && testatorDisplayRealName.trim() !== "" && testatorDisplayRealName !== "로그인 필요") {
       setCurrentStep(3);
     }
   };
 
-  const handleTitleChange = (e) => {
-    const value = e.target.value;
-    setWillTitle(value);
-    // 제목 입력 시 다음 단계로 자동 이동 로직 (선택 사항)
-    if (value.trim() !== "" && content.trim() !== "" && sessionUsername && currentStep < 2) {
-      setCurrentStep(2);
-    } else if (value.trim() !== "" && sessionUsername && currentStep === 1 && (content.trim() === "")) { // 내용이 비어있을 때
-      // 특별한 동작 없음, 사용자가 내용을 입력해야 2단계로 넘어감
-    }
-  };
-
   const handleSubmit = async () => {
-    if (!willTitle || !content || !sessionUsername) {
-      setApiStatus({ loading: false, error: "유언장 제목, 내용, 작성자 정보(로그인 상태)는 필수 항목입니다.", data: null });
+    // "기존 코드"처럼 willTitle을 필수 항목으로 다시 검사합니다.
+    if (!willTitle || !content || !sessionUsername || !testatorDisplayRealName || testatorDisplayRealName === "로그인 필요") {
+      setApiStatus({ loading: false, error: "유언장 제목, 내용 및 작성자 정보(로그인 상태)는 필수 항목입니다.", data: null });
       return;
     }
 
-    // 이미지는 선택 사항으로 처리 (필수라면 아래 주석 해제 및 메시지 수정)
-    // if (imageFilesToUpload.length === 0) {
-    //   setApiStatus({ loading: false, error: "하나 이상의 유언장 이미지를 첨부해주세요.", data: null });
-    //   return;
-    // }
+    // 모든 필수 정보가 입력되었고, 현재 단계가 4단계 미만이면 4단계로 이동
+    if (willTitle.trim() && content.trim() && sessionUsername && currentStep < 4) {
+        setCurrentStep(4);
+        return; // 4단계에서 다시 "작성 완료 및 제출" 버튼을 누르도록 유도
+    }
 
     setApiStatus({ loading: true, error: null, data: null });
 
     const formData = new FormData();
-    formData.append('title', willTitle);
+    formData.append('title', willTitle); // title 전송 로직 복원
     formData.append('originalContent', content);
-    
-    // beneficiaries는 JSON 문자열로 변환하여 전송
     const beneficiariesArray = Array.isArray(viewers) ? viewers.filter(v => v && v.name).map(v => v.name) : [];
     formData.append('beneficiaries', JSON.stringify(beneficiariesArray));
     formData.append('testatorId', sessionUsername);
+    formData.append('blockchainEnabled', blockchain);
+    formData.append('notarizationRequested', publicReq);
 
-    // 여러 이미지 파일이 있는 경우 FormData에 추가
     if (imageFilesToUpload.length > 0) {
       imageFilesToUpload.forEach((file) => {
-        // 백엔드 routes.js의 upload.array()에서 설정한 필드 이름 (예: 'imageFiles')
-        formData.append('imageFiles', file, file.name); // file.name을 세 번째 인자로 전달하는 것이 좋음
+        formData.append('imageFiles', file, file.name);
       });
     }
     
     try {
       let response;
-      // 이미지가 하나라도 첨부되었으면 registerWillWithImage 서비스 호출
-      // (willService.js에서 API 엔드포인트가 /register-with-images 로 변경되었다고 가정)
-      if (imageFilesToUpload.length > 0) { 
+      if (imageFilesToUpload.length > 0) {
         response = await willService.registerWillWithImage(formData);
       } else {
-        // 이미지가 없으면 기존 registerWill 서비스 호출 (텍스트 데이터만 전송)
         const textWillData = {
-          title: willTitle,
+          title: willTitle, // title 전송 로직 복원
           originalContent: content,
-          beneficiaries: beneficiariesArray, // JSON 문자열이 아닌 배열 형태로 전달 가능 (서버에서 처리 방식에 따라 다름)
-                                           // 여기서는 서버 service.js가 배열도 JSON.stringify 하므로 배열 전달
+          beneficiaries: beneficiariesArray,
           testatorId: sessionUsername,
+          blockchainEnabled: blockchain,
+          notarizationRequested: publicReq,
         };
         response = await willService.registerWill(textWillData);
       }
       
-      // response.data가 객체이고, 그 안에 message나 다른 유용한 정보가 있을 수 있음
       const responseData = response.data || {};
       setApiStatus({ loading: false, error: null, data: responseData });
       console.log("등록 성공:", responseData);
-      
       const successMessage = responseData.message || "유언장이 성공적으로 등록되었습니다.";
       navigate('/success', { state: { message: successMessage, details: responseData } });
 
@@ -204,148 +455,136 @@ const WillWritePage = () => {
     }
   };
   
-  // JSX 반환 부분은 이전 답변에서 제안한 JSX 구조를 사용합니다.
-  // (제공해주신 코드에는 return (...); 부분이 이미 존재하므로, 그 내부를 수정합니다.)
-  return (
-    <div className="WillWritePage_Container">
-      <h2 className="WillWritePage_Title">디지털 유언장 작성</h2>
-      <div className="WillWritePage_Subtitle">작성 진행 상태</div>
-      <div className="WillWritePage_StepProgress" style={{ "--progress": currentStep - 1 }}>
-        <div className={`WillWritePage_StepProgress_StepItem ${currentStep >= 1 ? "active" : ""}`}>
-          <div className="WillWritePage_StepProgress_Circle">1</div>
-          <span className="WillWritePage_StepProgress_StepName">기본 정보</span>
-        </div>
-        <div className={`WillWritePage_StepProgress_StepItem ${currentStep >= 2 ? "active" : ""}`}>
-          <div className="WillWritePage_StepProgress_Circle">2</div>
-          <span className="WillWritePage_StepProgress_StepName">내용 작성</span>
-        </div>
-        <div className={`WillWritePage_StepProgress_StepItem ${currentStep >= 3 ? "active" : ""}`}>
-          <div className="WillWritePage_StepProgress_Circle">3</div>
-          <span className="WillWritePage_StepProgress_StepName">열람자 지정</span>
-        </div>
-        <div className={`WillWritePage_StepProgress_StepItem ${currentStep >= 4 ? "active" : ""}`}>
-          <div className="WillWritePage_StepProgress_Circle">4</div>
-          <span className="WillWritePage_StepProgress_StepName">최종 확인</span>
-        </div>
-      </div>
+  const isSubmitDisabled = () => {
+    if (apiStatus.loading) return true;
+    // willTitle도 필수 항목으로 다시 검사합니다.
+    if (!willTitle.trim() || !content.trim() || !sessionUsername || testatorDisplayRealName === "로그인 필요") {
+        return true;
+    }
+    return false; 
+  };
 
-      <div className="WillWritePage_Section">
-        <div className="WillWritePage_Label">기본 정보</div>
-        <div className="WillWritePage_InlineInputs">
-          <input className="WillWritePage_Input" placeholder="유언장 제목" value={willTitle} onChange={handleTitleChange} />
-          <input 
-            className="WillWritePage_Input" 
-            placeholder="작성자 이름 (자동 입력)" 
-            value={isLoadingRealName ? "실명 로딩 중..." : testatorDisplayRealName} 
+  return (
+    <Container>
+      <Title>디지털 유언장 작성</Title>
+      <Subtitle>작성 진행 상태</Subtitle>
+      <StepProgress style={{ "--progress": currentStep - 1 }}>
+        <div className={`step-item ${currentStep >= 1 ? "active" : ""}`}>
+          <div className="circle">1</div>
+          <span className="step-name">기본 정보</span>
+        </div>
+        <div className={`step-item ${currentStep >= 2 ? "active" : ""}`}>
+          <div className="circle">2</div>
+          <span className="step-name">내용 작성</span>
+        </div>
+        <div className={`step-item ${currentStep >= 3 ? "active" : ""}`}>
+          <div className="circle">3</div>
+          <span className="step-name">열람자 지정</span>
+        </div>
+        <div className={`step-item ${currentStep >= 4 ? "active" : ""}`}>
+          <div className="circle">4</div>
+          <span className="step-name">최종 확인</span>
+        </div>
+      </StepProgress>
+
+      <Section>
+        <Label>기본 정보</Label>
+        <InlineInputs>
+          <Input placeholder="유언장 제목" value={willTitle} onChange={handleTitleChange} />
+          <Input
+            placeholder="작성자 이름 (자동 입력)"
+            value={isLoadingRealName ? "실명 로딩 중..." : testatorDisplayRealName}
             readOnly
           />
-        </div>
-      </div>
+        </InlineInputs>
+      </Section>
 
-      <div className="WillWritePage_Section">
-        <div className="WillWritePage_Label">유언장 내용</div>
-        <textarea
-          className="WillWritePage_TextArea"
+      <Section>
+        <Label>유언장 내용</Label>
+        <TextArea
           placeholder="유언장 내용을 작성해주세요..."
           value={content}
           onChange={handleContentChange}
         />
-      </div>
-      {/* 이미지 업로드 섹션 수정 */}
-      <div className="WillWritePage_Section">
-        <div className="WillWritePage_Label">자필 문서 스캔 / 유언장 첨부 이미지 (선택사항, 여러 장 가능)</div>
-        <label htmlFor="handwritten-upload" className="WillWritePage_UploadBoxLabel">
+      </Section>
+      
+      <Section>
+        <Label>자필 문서 스캔 / 유언장 첨부 이미지 (선택사항, 여러 장 가능)</Label>
+        <UploadBoxLabel htmlFor="handwritten-upload">
           <FaUpload />
           <div>
             이곳에 파일을 끌어다 놓거나 클릭하여 업로드하세요
             <br />
-            (선택된 모든 이미지가 첨부됩니다. OCR은 첫 번째 파일로 진행됩니다.)
+            (선택된 모든 이미지가 첨부됩니다. OCR은 새로 추가된 첫 번째 파일로 진행됩니다.)
             <br />
             지원 형식: JPG, PNG, WEBP 등 이미지 파일
           </div>
-          <input
+          <UploadInput
             id="handwritten-upload"
             type="file"
             accept="image/*"
-            multiple // 여러 파일 선택 가능하도록 multiple 속성 추가
+            multiple
             onChange={handleFileChange}
-            className="WillWritePage_UploadInput" // 이 클래스로 input 숨김 처리 및 스타일링
           />
-        </label>
-        <label htmlFor="handwritten-upload" className="WillWritePage_UploadButton">
+        </UploadBoxLabel>
+        <UploadButton htmlFor="handwritten-upload">
           📎 문서/이미지 업로드하기
-        </label>
-        {ocrInProgress && <div style={{ marginTop: '10px', textAlign: 'center' }}>첫 번째 이미지 OCR 처리 중...</div>}
-        {ocrError && <div style={{ color: 'red', marginTop: '10px', textAlign: 'center' }}>OCR 오류: {ocrError}</div>}
+        </UploadButton>
+        {ocrInProgress && <ApiMessage style={{ marginTop: '10px', textAlign: 'center' }}>첫 번째 이미지 OCR 처리 중...</ApiMessage>}
+        {ocrError && <ApiMessage className="error" style={{ marginTop: '10px', textAlign: 'center' }}>OCR 오류: {ocrError}</ApiMessage>}
         
-        {/* 업로드된 파일 이름 목록 표시 */}
         {uploadedFileNames.length > 0 && (
-          <div className="WillWritePage_FilePreviewArea">
-            <h4 className="WillWritePage_PreviewTitle">선택된 파일:</h4>
-            <ul className="WillWritePage_FileNameList">
+          <FilePreviewArea>
+            <PreviewTitle>선택된 파일:</PreviewTitle>
+            <FileNameList>
               {uploadedFileNames.map((fileName, index) => (
-                <li key={index} className="WillWritePage_FileNameItem">{fileName}</li>
+                <FileNameItem key={index}>{fileName}</FileNameItem>
               ))}
-            </ul>
-          </div>
+            </FileNameList>
+          </FilePreviewArea>
         )}
-      </div>
-      {/* 열람자 지정 섹션 */}
-      <div className="WillWritePage_Section">
-        <div className="WillWritePage_Label">열람자 지정</div>
-        {Array.isArray(viewers) && viewers.map((v, i) => ( // viewers가 배열인지 확인
-          <div key={i} className="WillWritePage_ViewerItem">
+      </Section>
+      
+      <Section>
+        <Label>열람자 지정</Label>
+        {Array.isArray(viewers) && viewers.map((v, i) => (
+          <ViewerItem key={i}>
             <div>
               {v.name} <span style={{ color: "#888" }}>– {v.desc}</span>
             </div>
             <div style={{ fontFamily: "monospace" }}>{v.id}</div>
-          </div>
+          </ViewerItem>
         ))}
-        <button onClick={handleAddViewer} className="WillWritePage_AddViewerButton">
+        <AddViewerButton onClick={handleAddViewer}>
           + 열람자 추가
-        </button>
-      </div>
+        </AddViewerButton>
+      </Section>
 
-      {/* 고급 설정 섹션 */}
-      <div className="WillWritePage_Section">
-        <div className="WillWritePage_Label">고급 설정</div>
-        <label className="WillWritePage_CheckboxLabel">
-          <input
-            type="checkbox"
-            checked={blockchain}
-            onChange={(e) => setBlockchain(e.target.checked)}
-          />
+      <Section>
+        <Label>고급 설정</Label>
+        <CheckboxLabel>
+          <input type="checkbox" checked={blockchain} onChange={(e) => setBlockchain(e.target.checked)} />
           블록체인 등록 활성화
-        </label>
-        <label className="WillWritePage_CheckboxLabel">
-          <input
-            type="checkbox"
-            checked={publicReq}
-            onChange={(e) => setPublicReq(e.target.checked)}
-          />
+        </CheckboxLabel>
+        <CheckboxLabel>
+          <input type="checkbox" checked={publicReq} onChange={(e) => setPublicReq(e.target.checked)} />
           공증 신청
-        </label>
-      </div>
+        </CheckboxLabel>
+      </Section>
 
-      {/* 버튼 영역 */}
-      <div className="WillWritePage_ButtonWrap">
-        <button className="WillWritePage_Button WillWritePage_Button--save">임시 저장</button>
-        <button 
-            className="WillWritePage_Button WillWritePage_Button--submit" 
-            onClick={handleSubmit} 
-            disabled={apiStatus.loading || !willTitle || !content || !sessionUsername}
+      <ButtonWrap>
+        <Button className="save">임시 저장</Button>
+        <Button
+            className="submit"
+            onClick={handleSubmit}
+            disabled={isSubmitDisabled()}
         >
-          {apiStatus.loading ? "처리 중..." : "작성 완료"}
-        </button>
-      </div>
+          {apiStatus.loading ? "처리 중..." : (currentStep < 4 ? "내용 검토 및 최종 확인" : "작성 완료 및 제출")}
+        </Button>
+      </ButtonWrap>
 
-      {/* API 호출 상태 메시지 */}
-      {apiStatus.error && <div className="WillWritePage_ApiError" style={{ color: 'red', marginTop: '10px', textAlign: 'center' }}>오류: {apiStatus.error}</div>}
-      {apiStatus.data && <div className="WillWritePage_ApiSuccess" style={{ color: 'green', marginTop: '10px', textAlign: 'center' }}>
-        {/* 서버 응답이 객체이고 message 필드가 있다면 그것을 표시, 아니면 전체 객체를 JSON 문자열로 */}
-        성공! {typeof apiStatus.data === 'object' ? (apiStatus.data.message || JSON.stringify(apiStatus.data)) : apiStatus.data}
-        </div>}
-    </div>
+      {apiStatus.error && <ApiMessage className="error" >오류: {apiStatus.error}</ApiMessage>}
+    </Container>
   );
 };
 

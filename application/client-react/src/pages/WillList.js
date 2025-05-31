@@ -76,7 +76,7 @@ export default function WillList({ onSelect }) {
                 onSelect(willId);
             } else {
                 console.log("WillList: Navigating to /detail/" + willId);
-                navigate(`/detail/${willId}`);
+                navigate(`/will/${willId}`);
             }
         } else {
             console.warn("WillList: Clicked item has no valid ID to navigate or select. Received ID:", willId);

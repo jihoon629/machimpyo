@@ -188,15 +188,16 @@ async function registerWillWithImagesService(title, originalContent, beneficiari
 
         // 2. Wills 테이블에 텍스트 유언 암호화 정보 저장 (이미지 데이터는 WillImages 테이블로 분리)
         const insertTextWillQuery = `
-        INSERT INTO Wills (id, testator_id, encrypted_content, encryption_iv, encryption_auth_tag) 
-        VALUES (?, ?, ?, ?, ?) 
+        INSERT INTO Wills (id, testator_id, encrypted_content, encryption_iv, encryption_auth_tag,title) 
+        VALUES (?, ?, ?, ?, ?,?) 
     `; // 'title' 제거
     await connection.execute(insertTextWillQuery, [
         willDbId,
         testatorId,
         encryptedPayload.encryptedData,
         encryptedPayload.iv,
-        encryptedPayload.authTag // title 파라미터 제거
+        encryptedPayload.authTag, // title 파라미터 제거
+        title
     ]);
         console.log(`Service (registerWillWithImagesService): Text will content stored in MariaDB (Wills table) with ID: ${willDbId} for testator: ${testatorId}`);
 
@@ -358,6 +359,10 @@ async function getWillDetailsService(blockchainWillId, username) {
 
         try {
             blockchainWill = JSON.parse(blockchainDataBuffer.toString());
+            if (blockchainWill && blockchainWill.images === null) {
+                console.log(`Service (getWillDetailsService): Correcting null images for will ID ${blockchainWillId} to []`);
+                blockchainWill.images = []; // null을 빈 배열로 변경
+            }
         } catch (parseError) {
             console.error("Service Error: Failed to parse blockchain response:", parseError, "Raw data:", blockchainDataBuffer.toString());
             throw Object.assign(new Error('Service Error: Failed to parse will data from blockchain.'), { status: 500, cause: parseError });
