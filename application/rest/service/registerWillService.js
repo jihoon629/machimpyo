@@ -1,12 +1,13 @@
 const { v4: uuidv4 } = require('uuid');
-const { encrypt, calculateHash } = require('../utils/encryption'); // decrypt는 여기서는 불필요
-const pool = require('../db'); // DB 연결 풀
-const sdk = require('../sdk'); // Fabric SDK 호출 모듈
+const { encrypt, calculateHash } = require('../utils/encryption');
+const pool = require('../db'); 
+const sdk = require('../sdk'); 
 
 // 내부 헬퍼 함수: 실제 유언장 등록 로직 수행
-async function _registerWillCore(connection, { title, originalContent, beneficiariesInput, testatorId }, imageFiles) {
+// beneficiariesInput 파라미터명을 designatedViewersJSON으로 변경
+async function _registerWillCore(connection, { title, originalContent, designatedViewersJSON, testatorId }, imageFiles) {
     // 1. 고유 ID 생성
-    const willDbId = uuidv4(); // Wills 테이블 및 블록체인 Will ID로 사용될 고유 ID
+    const willDbId = uuidv4(); 
 
     // 2. 텍스트 유언 내용 처리 (해시 및 암호화)
     const contentHash = calculateHash(originalContent);
@@ -15,7 +16,7 @@ async function _registerWillCore(connection, { title, originalContent, beneficia
         throw Object.assign(new Error('Core Error: Failed to encrypt will content correctly.'), { status: 500 });
     }
 
-    // 3. Wills 테이블에 텍스트 유언 정보 저장 (title 포함)
+    // 3. Wills 테이블에 텍스트 유언 정보 저장
     const insertTextWillQuery = `
         INSERT INTO Wills (id, testator_id, encrypted_content, encryption_iv, encryption_auth_tag, title) 
         VALUES (?, ?, ?, ?, ?, ?)
@@ -30,7 +31,7 @@ async function _registerWillCore(connection, { title, originalContent, beneficia
     ]);
     console.log(`Core (_registerWillCore): Text will content stored in MariaDB (Wills table) with ID: ${willDbId} for testator: ${testatorId}`);
 
-    // 4. 이미지 처리 (imageFiles가 제공된 경우)
+    // 4. 이미지 처리
     const imageMetadataForChaincode = [];
     if (imageFiles && imageFiles.length > 0) {
         for (const imageFile of imageFiles) {
@@ -73,17 +74,19 @@ async function _registerWillCore(connection, { title, originalContent, beneficia
     }
 
     // 5. 블록체인에 전달할 인자 준비
-    const beneficiariesChaincodeArg = beneficiariesInput || "[]"; 
+    // designatedViewersJSON 파라미터 사용 (체인코드에서 이 이름으로 기대)
+    const designatedViewersChaincodeArg = designatedViewersJSON || "[]"; 
     const imagesJSONString = JSON.stringify(imageMetadataForChaincode);
     const offChainStorageRefForText = willDbId; 
 
+    // 체인코드 RegisterWill 함수 시그니처에 맞게 designatedViewersChaincodeArg 전달
     const chaincodeArgs = [
         String(willDbId),
         String(testatorId),
         String(title),
         String(contentHash),
         String(offChainStorageRefForText),
-        beneficiariesChaincodeArg, 
+        designatedViewersChaincodeArg, // 변경된 파라미터명 사용
         imagesJSONString
     ];
     console.log(`Core (_registerWillCore): Invoking chaincode 'RegisterWill' with args: ${JSON.stringify(chaincodeArgs)}`);
@@ -99,17 +102,24 @@ async function _registerWillCore(connection, { title, originalContent, beneficia
     };
 }
 
-
-async function registerWillService(title, originalContent, beneficiaries, testatorId) {
+// 이미지 없는 유언장 등록 서비스
+// 컨트롤러에서 designatedViewers (JS 객체 배열 또는 undefined)를 받음
+async function registerWillService(title, originalContent, designatedViewers, testatorId) {
     let connection;
     try {
         connection = await pool.getConnection();
         await connection.beginTransaction();
 
-        const beneficiariesJSONString = JSON.stringify(beneficiaries || []);
+        // designatedViewers를 JSON 문자열로 변환
+        const designatedViewersJSONString = JSON.stringify(designatedViewers || []);
 
         const result = await _registerWillCore(connection, 
-            { title, originalContent, beneficiariesInput: beneficiariesJSONString, testatorId },
+            { 
+                title, 
+                originalContent, 
+                designatedViewersJSON: designatedViewersJSONString, // _registerWillCore에 JSON 문자열 전달
+                testatorId 
+            },
             null // 이미지 파일 없음
         );
 
@@ -126,9 +136,10 @@ async function registerWillService(title, originalContent, beneficiaries, testat
     }
 }
 
-async function registerWillWithImagesService(title, originalContent, beneficiariesInput, testatorId, imageFiles) {
-    // 컨트롤러에서 기본 유효성 검사 (필수 필드, 이미지 존재 여부, 이미지 개수 제한 등)를 수행한 것으로 가정합니다.
-    // 서비스 레벨에서는 각 이미지 파일의 상세 유효성(내용물)을 검사합니다.
+// 이미지 있는 유언장 등록 서비스
+// 컨트롤러에서 designatedViewersInput (JSON 문자열 또는 undefined)을 받음
+async function registerWillWithImagesService(title, originalContent, designatedViewersInput, testatorId, imageFiles) {
+    // 각 이미지 파일의 상세 유효성 검사
     for (const imageFile of imageFiles) {
         if (!imageFile || !imageFile.buffer || !imageFile.mimetype || !imageFile.originalname) {
             const error = new Error('Service Error: Each image file must be valid and contain buffer, mimetype, and originalname.');
@@ -142,21 +153,25 @@ async function registerWillWithImagesService(title, originalContent, beneficiari
         connection = await pool.getConnection();
         await connection.beginTransaction();
 
-        let beneficiariesChaincodeArg;
-        if (typeof beneficiariesInput === 'string') {
+        // designatedViewersInput이 문자열 형태의 JSON으로 오므로, 유효성 검사 후 그대로 사용하거나 기본값 "[]" 사용
+        let designatedViewersJSONString = "[]"; // 기본값
+        if (typeof designatedViewersInput === 'string' && designatedViewersInput.trim() !== "") {
             try {
-                JSON.parse(beneficiariesInput); 
-                beneficiariesChaincodeArg = beneficiariesInput;
+                JSON.parse(designatedViewersInput); // 유효한 JSON인지 확인
+                designatedViewersJSONString = designatedViewersInput;
             } catch (e) {
-                console.warn("Service (registerWillWithImagesService): beneficiariesInput was a string but not valid JSON. Defaulting to []. Input:", beneficiariesInput);
-                beneficiariesChaincodeArg = "[]";
+                console.warn("Service (registerWillWithImagesService): designatedViewersInput was a string but not valid JSON. Defaulting to []. Input:", designatedViewersInput);
+                // 유효하지 않은 JSON 문자열이면 기본값 "[]" 사용
             }
-        } else {
-            beneficiariesChaincodeArg = JSON.stringify(beneficiariesInput || []);
         }
         
         const result = await _registerWillCore(connection, 
-            { title, originalContent, beneficiariesInput: beneficiariesChaincodeArg, testatorId },
+            { 
+                title, 
+                originalContent, 
+                designatedViewersJSON: designatedViewersJSONString, // _registerWillCore에 JSON 문자열 전달
+                testatorId 
+            },
             imageFiles
         );
 
