@@ -70,6 +70,8 @@ function dev() {
     -c '{"Args":["Init"]}' \
     --waitForEvent
 }
+
+
 function prod() {
   ## 체인코드 패키지화
   echo "체인코드 패키지화"
