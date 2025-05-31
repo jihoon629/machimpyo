@@ -61,6 +61,37 @@ const getMyWills = async (username) => {
   }
 };
 
+
+const getDesignatedViewersWills = async (username) => {
+  if (!username) {
+    // 이 username은 백엔드에서 요청 사용자를 식별하는 데 사용될 수 있으나,
+    // 주로 인증된 세션(req.user.username)을 통해 사용자를 식별합니다.
+    // 클라이언트에서 명시적으로 보내는 것은 API 호출의 명확성을 위함이거나,
+    // 백엔드가 쿼리 파라미터를 보조적으로 사용할 경우를 대비할 수 있습니다.
+    throw new Error("Username is required to fetch designated viewer wills.");
+  }
+  try {
+    const response = await axios.get('/wills/designatedViewers-wills', {
+      params: {
+        // 백엔드 컨트롤러 getDesignatedViewersWills는 req.user.username을 사용하므로,
+        // 이 파라미터는 백엔드 로직상 필수적이지 않을 수 있습니다.
+        // 하지만, API 호출의 일관성과 명확성을 위해 포함할 수 있습니다.
+        username: username
+      }
+    });
+    return response.data; // 백엔드에서 조회된 유언장 목록 (또는 빈 배열)
+  } catch (error) {
+    console.error(`willService.getDesignatedViewersWills: Failed for user ${username}`, error.response?.data || error.message);
+    if (error.response) {
+        const serviceError = new Error(error.response.data.message || error.response.data.error || 'Failed to get designated viewer wills');
+        serviceError.status = error.response.status;
+        serviceError.data = error.response.data;
+        throw serviceError;
+    }
+    throw error; // 그 외 네트워크 오류 등
+  }
+};
+
 /**
  * 이미지 파일에서 텍스트를 추출합니다 (OCR).
  * 백엔드 엔드포인트: POST /ocr/extract-text (routes.js 기준)
@@ -127,5 +158,6 @@ export default {
   registerUser,
   queryByName,
   registerWillWithImage,
-  getWillImageByImageRecordId // 함수 이름 변경에 맞춰 export 이름도 변경
+  getWillImageByImageRecordId,
+  getDesignatedViewersWills
 };

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react"; // useEffect 추가
 import styled from "styled-components";
-import { FaUpload } from "react-icons/fa";
+import { FaUpload, FaPlus, FaTrash } from "react-icons/fa"; // FaPlus, FaTrash 아이콘 추가
 import { useNavigate } from 'react-router-dom';
 import willService from '../services/willService';
+import { v4 as uuidv4 } from 'uuid'; // uuid 직접 사용
 
 // Styled-components 정의 (중복 제거 및 필요한 것만 남김)
 const Container = styled.div`
@@ -300,10 +301,13 @@ const ApiMessage = styled.div`
   }
 `;
 
-// 상세 로직을 포함한 WillWritePage 컴포넌트
+
+
+
 const WillWritePage = () => {
   const navigate = useNavigate();
-  const [viewers, setViewers] = useState([]); // 초기 열람자 예시는 필요시 추가
+  // viewers 상태를 이름과 전화번호를 포함하도록 변경
+  const [viewers, setViewers] = useState([]); 
   const [blockchain, setBlockchain] = useState(false);
   const [publicReq, setPublicReq] = useState(false);
   const [imageFilesToUpload, setImageFilesToUpload] = useState([]);
@@ -336,14 +340,14 @@ const WillWritePage = () => {
     } else {
       setTestatorDisplayRealName("로그인 필요");
       setIsLoadingRealName(false);
-      // navigate('/login'); // 필요시 로그인 페이지로 리다이렉트
+      // navigate('/login'); 
     }
   }, []);
 
   const handleFileChange = async (e) => {
     const newFiles = Array.from(e.target.files);
     if (newFiles.length > 0) {
-      const updatedFilesToUpload = [...imageFilesToUpload, ...newFiles];
+      const updatedFilesToUpload = [...imageFilesToUpload, ...newFiles].slice(0, 5); // 최대 5개 파일 제한 (예시)
       const updatedFileNames = updatedFilesToUpload.map(f => f.name);
       setImageFilesToUpload(updatedFilesToUpload);
       setUploadedFileNames(updatedFileNames);
@@ -388,37 +392,64 @@ const WillWritePage = () => {
     }
   };
 
+  // 지정 열람자 추가 함수 수정
   const handleAddViewer = () => {
-    const newViewer = { name: "새 열람자", desc: "관계", id: `0xNew...${Math.random().toString(16).slice(2,10)}` };
-    setViewers(prev => Array.isArray(prev) ? [...prev.filter(v => v && v.name && v.id), newViewer] : [newViewer]);
+    // 새 지정 열람자 객체 (이름과 전화번호 필드 포함)
+    const newViewer = { id: uuidv4(), name: "", phone: "" };
+    setViewers(prev => [...prev, newViewer]); // 기존 배열 뒤에 추가
     if (currentStep < 3 && willTitle.trim() !== "" && content.trim() !== "" && testatorDisplayRealName.trim() !== "" && testatorDisplayRealName !== "로그인 필요") {
       setCurrentStep(3);
     }
   };
 
+  // 지정 열람자 정보 변경 핸들러
+  const handleViewerChange = (id, field, value) => {
+    setViewers(prevViewers =>
+      prevViewers.map(viewer =>
+        viewer.id === id ? { ...viewer, [field]: value } : viewer
+      )
+    );
+  };
+
+  // 지정 열람자 삭제 핸들러
+  const handleRemoveViewer = (idToRemove) => {
+    setViewers(prevViewers => prevViewers.filter(viewer => viewer.id !== idToRemove));
+  };
+
+
   const handleSubmit = async () => {
-    // "기존 코드"처럼 willTitle을 필수 항목으로 다시 검사합니다.
     if (!willTitle || !content || !sessionUsername || !testatorDisplayRealName || testatorDisplayRealName === "로그인 필요") {
       setApiStatus({ loading: false, error: "유언장 제목, 내용 및 작성자 정보(로그인 상태)는 필수 항목입니다.", data: null });
       return;
     }
+    
+    // 지정 열람자 정보 유효성 검사 (이름과 전화번호 모두 입력되었는지)
+    for (const viewer of viewers) {
+        if (!viewer.name.trim() || !viewer.phone.trim()) {
+            setApiStatus({ loading: false, error: "모든 지정 열람자의 이름과 전화번호를 입력해야 합니다.", data: null });
+            return;
+        }
+    }
 
-    // 모든 필수 정보가 입력되었고, 현재 단계가 4단계 미만이면 4단계로 이동
+
     if (willTitle.trim() && content.trim() && sessionUsername && currentStep < 4) {
         setCurrentStep(4);
-        return; // 4단계에서 다시 "작성 완료 및 제출" 버튼을 누르도록 유도
+        return; 
     }
 
     setApiStatus({ loading: true, error: null, data: null });
 
     const formData = new FormData();
-    formData.append('title', willTitle); // title 전송 로직 복원
+    formData.append('title', willTitle); 
     formData.append('originalContent', content);
-    const beneficiariesArray = Array.isArray(viewers) ? viewers.filter(v => v && v.name).map(v => v.name) : [];
-    formData.append('beneficiaries', JSON.stringify(beneficiariesArray));
+    
+    // 지정 열람자 정보를 {name, phone} 객체의 배열로 변환하여 전송
+    const designatedViewersArray = viewers.map(v => ({ name: v.name, phone: v.phone }));
+    formData.append('designatedViewers', JSON.stringify(designatedViewersArray)); // 필드명 변경 및 데이터 형식 변경
+
     formData.append('testatorId', sessionUsername);
-    formData.append('blockchainEnabled', blockchain);
-    formData.append('notarizationRequested', publicReq);
+    // formData.append('blockchainEnabled', blockchain); // 서버에서 처리 방식에 따라 boolean 또는 문자열
+    // formData.append('notarizationRequested', publicReq); // 서버에서 처리 방식에 따라 boolean 또는 문자열
 
     if (imageFilesToUpload.length > 0) {
       imageFilesToUpload.forEach((file) => {
@@ -428,18 +459,20 @@ const WillWritePage = () => {
     
     try {
       let response;
+      // 이미지 유무에 따라 다른 API 호출 (기존 로직 유지)
+      // textWillData 객체에도 designatedViewers 포함되도록 수정
       if (imageFilesToUpload.length > 0) {
-        response = await willService.registerWillWithImage(formData);
+        response = await willService.registerWillWithImage(formData); // registerWillWithImage API가 FormData를 받고 designatedViewers를 처리해야 함
       } else {
         const textWillData = {
-          title: willTitle, // title 전송 로직 복원
+          title: willTitle,
           originalContent: content,
-          beneficiaries: beneficiariesArray,
+          designatedViewers: designatedViewersArray, // 필드명 변경 및 데이터 형식 변경
           testatorId: sessionUsername,
-          blockchainEnabled: blockchain,
-          notarizationRequested: publicReq,
+          // blockchainEnabled: blockchain,
+          // notarizationRequested: publicReq,
         };
-        response = await willService.registerWill(textWillData);
+        response = await willService.registerWill(textWillData); // registerWill API가 이 구조를 받아야 함
       }
       
       const responseData = response.data || {};
@@ -457,9 +490,14 @@ const WillWritePage = () => {
   
   const isSubmitDisabled = () => {
     if (apiStatus.loading) return true;
-    // willTitle도 필수 항목으로 다시 검사합니다.
     if (!willTitle.trim() || !content.trim() || !sessionUsername || testatorDisplayRealName === "로그인 필요") {
         return true;
+    }
+    // 지정 열람자 정보 유효성 검사 추가 (모든 열람자의 이름과 전화번호가 채워졌는지)
+    for (const viewer of viewers) {
+        if (!viewer.name.trim() || !viewer.phone.trim()) {
+            return true; // 하나라도 비어있으면 비활성화
+        }
     }
     return false; 
   };
@@ -479,7 +517,7 @@ const WillWritePage = () => {
         </div>
         <div className={`step-item ${currentStep >= 3 ? "active" : ""}`}>
           <div className="circle">3</div>
-          <span className="step-name">열람자 지정</span>
+          <span className="step-name">지정 열람자</span> {/* 단계 이름 변경 */}
         </div>
         <div className={`step-item ${currentStep >= 4 ? "active" : ""}`}>
           <div className="circle">4</div>
@@ -509,7 +547,7 @@ const WillWritePage = () => {
       </Section>
       
       <Section>
-        <Label>자필 문서 스캔 / 유언장 첨부 이미지 (선택사항, 여러 장 가능)</Label>
+        <Label>자필 문서 스캔 / 유언장 첨부 이미지 (선택사항, 최대 5장)</Label>
         <UploadBoxLabel htmlFor="handwritten-upload">
           <FaUpload />
           <div>
@@ -546,34 +584,53 @@ const WillWritePage = () => {
       </Section>
       
       <Section>
-        <Label>열람자 지정</Label>
-        {Array.isArray(viewers) && viewers.map((v, i) => (
-          <ViewerItem key={i}>
-            <div>
-              {v.name} <span style={{ color: "#888" }}>– {v.desc}</span>
-            </div>
-            <div style={{ fontFamily: "monospace" }}>{v.id}</div>
-          </ViewerItem>
+        <Label>지정 열람자 정보</Label> {/* 레이블 변경 */}
+        {viewers.map((viewer, index) => (
+          // 각 지정 열람자 입력 UI (별도의 스타일 컴포넌트로 분리 가능)
+          <div key={viewer.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', gap: '10px' }}>
+            <Input
+              type="text"
+              placeholder="열람자 이름"
+              value={viewer.name}
+              onChange={(e) => handleViewerChange(viewer.id, 'name', e.target.value)}
+              style={{ flexGrow: 1 }} 
+            />
+            <Input
+              type="tel"
+              placeholder="열람자 전화번호"
+              value={viewer.phone}
+              onChange={(e) => handleViewerChange(viewer.id, 'phone', e.target.value)}
+              style={{ flexGrow: 1 }}
+            />
+            <Button 
+                onClick={() => handleRemoveViewer(viewer.id)} 
+                className="remove" /* 스타일 적용 위해 className 추가 가능 */
+                style={{ padding: '8px 12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              <FaTrash /> 삭제
+            </Button>
+          </div>
         ))}
         <AddViewerButton onClick={handleAddViewer}>
-          + 열람자 추가
+          <FaPlus style={{ marginRight: '5px' }} />
+          지정 열람자 추가
         </AddViewerButton>
       </Section>
 
       <Section>
-        <Label>고급 설정</Label>
+        <Label>고급 설정 (선택사항)</Label> {/* 레이블 변경 */}
         <CheckboxLabel>
           <input type="checkbox" checked={blockchain} onChange={(e) => setBlockchain(e.target.checked)} />
-          블록체인 등록 활성화
+          블록체인 원장에 기록 (추천)
         </CheckboxLabel>
         <CheckboxLabel>
           <input type="checkbox" checked={publicReq} onChange={(e) => setPublicReq(e.target.checked)} />
-          공증 신청
+          디지털 공증 신청 (별도 비용 발생 가능)
         </CheckboxLabel>
       </Section>
 
       <ButtonWrap>
-        <Button className="save">임시 저장</Button>
+        <Button className="save" onClick={() => alert("임시 저장 기능 구현 필요")}>임시 저장</Button> {/* 임시 저장 버튼에 기능 연결 필요 */}
         <Button
             className="submit"
             onClick={handleSubmit}
@@ -589,3 +646,4 @@ const WillWritePage = () => {
 };
 
 export default WillWritePage;
+

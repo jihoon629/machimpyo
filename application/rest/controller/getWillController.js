@@ -21,7 +21,28 @@ async function getMyWills(req, res, next) {
         next(error); 
     }
 }
+// 내가 지정 열람자로 되어 있는 유언장 목록 조회 컨트롤러
+async function getDesignatedViewersWills(req, res, next) {
+    try {
+        const { username } = req.query;
 
+        if (!username) {
+            const error = new Error("쿼리 파라미터로 사용자 이름(username)을 제공해야 합니다.");
+            error.status = 400;
+            return next(error);
+        }
+
+        console.log(`Controller: Request received for getDesignatedViewersWills by user '${username}' (from query param)`);
+        // 'getWillService' 대신 'willService' 사용
+        const wills = await willService.getWillsViewableByUserService(username);
+        
+        res.json(wills);
+
+    } catch (error) {
+        console.error(`Controller Error in getDesignatedViewersWills for user ${req.query.username || 'unknown'}: ${error.message}`);
+        next(error);
+    }
+}
 // 특정 유언장 상세 정보 조회 처리
 async function getWillDetails(req, res, next) {
     const { willId } = req.params; 
@@ -78,4 +99,5 @@ module.exports = {
     getMyWills,
     getWillDetails,
     getWillImage,
+    getDesignatedViewersWills
 };

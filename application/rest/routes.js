@@ -19,6 +19,8 @@ const upload = multer({
 
 // --- 유언장 조회관련 라우트 ---
 router.get('/wills/my-wills', getWillController.getMyWills); // 내 유언장 목록 조회
+router.get('/wills/designatedViewers-wills', getWillController.getDesignatedViewersWills); // 볼수있는 유언장 목록 조회
+
 router.get('/details/:willId', getWillController.getWillDetails); // 특정 유언장 상세 조회
 router.get('/image/:imageRecordId', getWillController.getWillImage); //  이미지 직접 조회를 위한 라우트
 
@@ -40,7 +42,7 @@ router.post('/ocr/extract-text', upload.single('file'), ocrController.extractTex
 // --- 사용자 인증 관련 라우트 ---
 router.post('/auth/register', userinfoController.registerUser);
 router.post('/auth/login', userinfoController.loginUser);
-router.get('/queryByName/:username', userinfoController.getUserRealNameByUsername);
+router.get('/queryByName/:username', userinfoController.getUserDetailsByUsername);
 
 
 module.exports = router;
