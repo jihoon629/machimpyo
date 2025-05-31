@@ -7,9 +7,7 @@ const ABstore = class {
     // Initialize the chaincode
     async Init(stub) {
         console.info('========= ABstore Init (Shim Style) =========');
-        // InitLedger와 유사한 초기화 로직을 여기에 둘 수 있으나,
-        // Go 버전의 InitLedger는 비어있으므로 여기서도 특별한 작업은 하지 않겠습니다.
-        // let ret = stub.getFunctionAndParameters(); // Init에서는 보통 사용하지 않음
+
         try {
             // 초기 상태 설정이 필요하다면 여기에 stub.putState 호출
             console.info('Chaincode Init successful');
@@ -197,6 +195,7 @@ const ABstore = class {
      */
     async GetMyWills(stub, args) {
         console.info('--- GetMyWills ---');
+        console.log("해치웠나");
         if (args.length !== 1) {
             throw new Error('Incorrect number of arguments. Expecting 1 for GetMyWills (usernameAsTestatorID).');
         }
