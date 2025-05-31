@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-	// "github.com/google/uuid" // UUID는 이제 ID를 직접 받으므로 필요 없을 수 있음
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
 
@@ -17,21 +16,28 @@ type ABstore struct {
 type ImageMetadata struct {
 	ImageHash        string `json:"imageHash"`
 	ImageOffChainRef string `json:"imageOffChainRef"`
-	FileName         string `json:"fileName"` // <--- omitempty 제거!
+	FileName         string `json:"fileName"`
 }
+
+// ViewerIdentity 구조체: 지정 열람자의 이름과 전화번호를 저장
+type ViewerIdentity struct {
+	Name  string `json:"name"`
+	Phone string `json:"phone"`
+}
+
 // Will defines the structure for a digital will.
 type Will struct {
-	ID                 string          `json:"id"`
-	TestatorID         string          `json:"testatorId"`
-	Title              string          `json:"title"`
-	ContentHash        string          `json:"contentHash"`
-	OffChainStorageRef string          `json:"offChainStorageRef"`
-	Beneficiaries      []string        `json:"beneficiaries"`
-	CreatedAt          string          `json:"createdAt"`
-	Images             []ImageMetadata `json:"images"`   // omitempty 제거
-	Status             string          `json:"status"`   // omitempty 제거
-	TransactionID      string          `json:"transactionId"`// omitempty 제거
-	ObjectType         string          `json:"docType"`  // omitempty 제거 (json 태그 이름도 docType)
+	ID                 string           `json:"id"`
+	TestatorID         string           `json:"testatorId"` // 유언 작성자의 시스템 username
+	Title              string           `json:"title"`
+	ContentHash        string           `json:"contentHash"`
+	OffChainStorageRef string           `json:"offChainStorageRef"`
+	DesignatedViewers  []ViewerIdentity `json:"designatedViewers"` // 필드 타입 및 JSON 태그 변경
+	CreatedAt          string           `json:"createdAt"`
+	Images             []ImageMetadata  `json:"images"`
+	Status             string           `json:"status"`
+	TransactionID      string           `json:"transactionId"`
+	ObjectType         string           `json:"docType"`
 }
 
 // InitLedger is called when the chaincode is instantiated or upgraded.
@@ -42,38 +48,25 @@ func (s *ABstore) InitLedger(ctx contractapi.TransactionContextInterface) error 
 
 // RegisterWill creates a new digital will on the ledger.
 func (s *ABstore) RegisterWill(ctx contractapi.TransactionContextInterface,
-	id string, // 유언장 고유 ID (MariaDB Wills 테이블의 ID와 일치)
+	id string,
 	testatorID string,
 	title string,
-	contentHash string, // 텍스트 유언 내용 해시 (필수)
-	offChainStorageRef string, // MariaDB Wills 테이블 ID (텍스트 유언)
-	beneficiariesJSON string, // 수혜자 목록 (JSON 문자열)
-	imagesJSON string) (string, error) { // 이미지 메타데이터 배열 (JSON 문자열)
+	contentHash string,
+	offChainStorageRef string,
+	designatedViewersJSON string, // [{"name":"홍길동", "phone":"010-1234-5678"},...] 형태의 JSON 문자열
+	imagesJSON string) (string, error) {
 
+	fmt.Printf("ABstore.RegisterWill: Attempting to register will ID '%s' for TestatorID '%s', Title '%s'\n", id, testatorID, title)
+	fmt.Printf("DesignatedViewersJSON: '%s'\n", designatedViewersJSON)
 	fmt.Printf("ABstore.RegisterWill: Attempting to register will ID '%s' for TestatorID '%s', Title '%s'\n", id, testatorID, title)
 	fmt.Printf("ContentHash (first 10): '%s...'\n", firstN(contentHash, 10))
 	fmt.Printf("OffChainStorageRef: '%s'\n", offChainStorageRef)
-	fmt.Printf("BeneficiariesJSON: '%s'\n", beneficiariesJSON)
 	fmt.Printf("ImagesJSON: '%s'\n", imagesJSON)
 
-	if id == "" {
-		return "", fmt.Errorf("id (will ID) cannot be empty")
-	}
-	if testatorID == "" {
-		return "", fmt.Errorf("testatorID cannot be empty")
-	}
-	if title == "" {
-		return "", fmt.Errorf("title cannot be empty")
-	}
-	if contentHash == "" {
-		return "", fmt.Errorf("contentHash cannot be empty")
-	}
-	if offChainStorageRef == "" { // MariaDB Wills 테이블 ID도 필수라고 가정
-		return "", fmt.Errorf("offChainStorageRef (DB reference for text will) cannot be empty")
+	if id == "" || testatorID == "" || title == "" || contentHash == "" || offChainStorageRef == "" {
+		return "", fmt.Errorf("all required fields (id, testatorID, title, contentHash, offChainStorageRef) cannot be empty")
 	}
 
-
-	// ID 중복 검사
 	existingWillBytes, err := ctx.GetStub().GetState(id)
 	if err != nil {
 		return "", fmt.Errorf("failed to read from world state for ID '%s': %w", id, err)
@@ -82,23 +75,22 @@ func (s *ABstore) RegisterWill(ctx contractapi.TransactionContextInterface,
 		return "", fmt.Errorf("will with ID '%s' already exists", id)
 	}
 
-	var beneficiaries []string
-	if beneficiariesJSON != "" { // 빈 문자열이 아닐 때만 언마샬링 시도
-		err = json.Unmarshal([]byte(beneficiariesJSON), &beneficiaries)
+	var designatedViewers []ViewerIdentity // <--- 이 타입이어야 함
+	if designatedViewersJSON != "" && designatedViewersJSON != "[]" { // 비어있거나 "[]"가 아닐 때만 처리
+		err = json.Unmarshal([]byte(designatedViewersJSON), &designatedViewers) // `[]ViewerIdentity`로 언마샬링
 		if err != nil {
-			return "", fmt.Errorf("failed to unmarshal beneficiaries JSON string '%s': %w", beneficiariesJSON, err)
+			return "", fmt.Errorf("failed to unmarshal designated viewers JSON string '%s': %w", designatedViewersJSON, err)
 		}
 	}
-
 	var images []ImageMetadata
-	if imagesJSON != "" && imagesJSON != "[]" { // 비어있거나 빈 배열 "[]" 문자열이 아닌 경우에만 처리
+	if imagesJSON != "" && imagesJSON != "[]" {
 		err = json.Unmarshal([]byte(imagesJSON), &images)
 		if err != nil {
 			return "", fmt.Errorf("failed to unmarshal images JSON string. Input was: '%s'. Error: %w", imagesJSON, err)
 		}
 	}
 
-	txID := ctx.GetStub().GetTxID() // 현재 트랜잭션 ID 가져오기
+	txID := ctx.GetStub().GetTxID()
 
 	will := Will{
 		ID:                 id,
@@ -106,12 +98,12 @@ func (s *ABstore) RegisterWill(ctx contractapi.TransactionContextInterface,
 		Title:              title,
 		ContentHash:        contentHash,
 		OffChainStorageRef: offChainStorageRef,
-		Beneficiaries:      beneficiaries,
-		CreatedAt:          time.Now().UTC().Format(time.RFC3339), // ISO 8601 형식 타임스탬프
+		DesignatedViewers:  designatedViewers, // 변경된 타입의 데이터 할당
+		CreatedAt:          time.Now().UTC().Format(time.RFC3339),
 		Images:             images,
-		Status:             "REGISTERED", // 또는 "ACTIVE" 등 초기 상태
+		Status:             "REGISTERED",
 		TransactionID:      txID,
-		ObjectType:         "Will", // "will"에서 "Will"로 변경 (일관성)
+		ObjectType:         "Will",
 	}
 
 	willJSON, err := json.Marshal(will)
@@ -129,16 +121,24 @@ func (s *ABstore) RegisterWill(ctx contractapi.TransactionContextInterface,
 }
 
 // GetWillDetails retrieves a specific will by its ID from the ledger.
-// username 파라미터는 접근 제어용으로 유지.
-func (s *ABstore) GetWillDetails(ctx contractapi.TransactionContextInterface, willID string, username string) (*Will, error) {
-	fmt.Printf("ABstore.GetWillDetails: Attempting to retrieve will with ID '%s' for user '%s'\n", willID, username)
+// Access is granted if the requester is the Testator or a matching DesignatedViewer (Name and Phone).
+func (s *ABstore) GetWillDetails(ctx contractapi.TransactionContextInterface,
+	willID string,
+	requesterUsername string,           // 유언 작성자인지 확인할 때 사용 (시스템 username)
+	viewerIdentityJSON string) (*Will, error) { // 조회 시도하는 사람의 {"name":"...", "phone":"..."} JSON
+
+	fmt.Printf("ABstore.GetWillDetails: Attempting to retrieve will with ID '%s' by requesterUsername '%s'\n", willID, requesterUsername)
+	fmt.Printf("ViewerIdentityJSON for designated viewer check: '%s'\n", viewerIdentityJSON)
+
 
 	if willID == "" {
 		return nil, fmt.Errorf("willID cannot be empty")
 	}
-    if username == "" { 
-        return nil, fmt.Errorf("username for access control cannot be empty")
-    }
+	if requesterUsername == "" {
+		return nil, fmt.Errorf("requesterUsername cannot be empty")
+	}
+	// viewerIdentityJSON은 작성자가 아닌 경우에만 필수
+	// if viewerIdentityJSON == "" { ... } // 이 검사는 아래 로직에서 처리
 
 	willJSON, err := ctx.GetStub().GetState(willID)
 	if err != nil {
@@ -154,17 +154,48 @@ func (s *ABstore) GetWillDetails(ctx contractapi.TransactionContextInterface, wi
 		return nil, fmt.Errorf("failed to unmarshal JSON for will '%s': %w", willID, err)
 	}
 
-	if will.TestatorID != username {
-		return nil, fmt.Errorf("access denied: user '%s' is not the testator ('%s') of will '%s'", username, will.TestatorID, willID)
+	isTestator := will.TestatorID == requesterUsername
+	isDesignatedViewer := false
+
+	if !isTestator {
+		if viewerIdentityJSON == "" {
+			return nil, fmt.Errorf("viewerIdentityJSON (name and phone for designated viewer check) cannot be empty when requester is not the testator")
+		}
+		var requestingViewer ViewerIdentity
+		err = json.Unmarshal([]byte(viewerIdentityJSON), &requestingViewer)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal viewerIdentityJSON '%s': %w", viewerIdentityJSON, err)
+		}
+		if requestingViewer.Name == "" || requestingViewer.Phone == "" {
+			return nil, fmt.Errorf("viewerIdentityJSON must contain non-empty 'name' and 'phone' fields")
+		}
+
+		for _, designatedViewer := range will.DesignatedViewers {
+			if designatedViewer.Name == requestingViewer.Name && designatedViewer.Phone == requestingViewer.Phone {
+				isDesignatedViewer = true
+				break
+			}
+		}
 	}
 
-	// Images 필드가 nil인 경우 실제 타입에 맞게 빈 슬라이스로 초기화
+	if !isTestator && !isDesignatedViewer {
+		return nil, fmt.Errorf("access denied: user '%s' is neither the testator ('%s') nor a matching designated viewer of will '%s'", requesterUsername, will.TestatorID, willID)
+	}
+
 	if will.Images == nil {
-		fmt.Printf("ABstore.GetWillDetails: Initializing nil Images field to empty slice for Will ID '%s'\n", will.ID)
-		will.Images = make([]ImageMetadata, 0) // 포인터(*) 제거하여 타입 일치시킴
+		will.Images = make([]ImageMetadata, 0)
+	}
+	if will.DesignatedViewers == nil { // 추가: DesignatedViewers도 nil이면 빈 슬라이스로 초기화
+		will.DesignatedViewers = make([]ViewerIdentity, 0)
 	}
 
-	fmt.Printf("ABstore.GetWillDetails: Successfully retrieved will ID '%s' (Testator: '%s', Images count: %d) for user '%s'\n", willID, will.TestatorID, len(will.Images), username)
+
+	fmt.Printf("ABstore.GetWillDetails: Successfully retrieved will ID '%s' (User: '%s', Role: %s) Images count: %d, DesignatedViewers count: %d\n",
+		willID,
+		requesterUsername,
+		func() string { if isTestator { return "Testator" } else { return "Designated Viewer" } }(),
+		len(will.Images),
+		len(will.DesignatedViewers))
 	return &will, nil
 }
 
@@ -186,13 +217,11 @@ func (s *ABstore) GetMyWills(ctx contractapi.TransactionContextInterface, userna
 	for resultsIterator.HasNext() {
 		queryResponse, err := resultsIterator.Next()
 		if err != nil {
-			// 에러 발생 시 로그를 남기고 계속 진행하거나, 바로 에러 반환 결정 필요
 			fmt.Printf("Warning: Failed to get next state from iterator for key '%s': %s. Skipping.\n", queryResponse.Key, err.Error())
 			continue
 		}
 
 		var will Will
-		// queryResponse.Value가 비어있는 경우를 대비한 방어 코드 추가
 		if queryResponse.Value == nil {
 			fmt.Printf("Warning: Empty value for key '%s'. Skipping.\n", queryResponse.Key)
 			continue
@@ -203,11 +232,12 @@ func (s *ABstore) GetMyWills(ctx contractapi.TransactionContextInterface, userna
 			continue
 		}
 
-		// 필터링 조건: ObjectType이 "Will"이고 (대소문자 일치 확인), TestatorID가 파라미터와 일치
 		if will.ObjectType == "Will" && will.TestatorID == usernameAsTestatorID {
-			// Images 필드가 nil인 경우 빈 슬라이스로 초기화
 			if will.Images == nil {
-				will.Images = make([]ImageMetadata, 0) // 포인터(*) 제거
+				will.Images = make([]ImageMetadata, 0)
+			}
+			if will.DesignatedViewers == nil { // DesignatedViewers nil 체크 추가
+				will.DesignatedViewers = make([]ViewerIdentity, 0)
 			}
 			myWills = append(myWills, &will)
 		}
@@ -218,24 +248,77 @@ func (s *ABstore) GetMyWills(ctx contractapi.TransactionContextInterface, userna
 	} else {
 		fmt.Printf("ABstore.GetMyWills: Found %d wills for testator (username) '%s'\n", len(myWills), usernameAsTestatorID)
 	}
-	return myWills, nil // 각 Will 객체에 Images 필드가 포함되어 반환됨
+	return myWills, nil
 }
 
-// getSubmitterID is not used in the current version of RegisterWill, GetWillDetails, GetMyWills.
-// If needed elsewhere, it can be kept. Otherwise, it can be removed.
-/*
-func getSubmitterID(ctx contractapi.TransactionContextInterface) (string, error) {
-	clientID, err := ctx.GetClientIdentity().GetID()
+// GetWillsViewableByMe retrieves all wills where the requester is listed as a designated viewer.
+func (s *ABstore) GetWillsViewableByMe(ctx contractapi.TransactionContextInterface, viewerIdentityJSON string) ([]*Will, error) {
+	fmt.Printf("ABstore.GetWillsViewableByMe: Attempting to retrieve wills viewable by viewer: %s\n", viewerIdentityJSON)
+
+	if viewerIdentityJSON == "" {
+		return nil, fmt.Errorf("viewerIdentityJSON (name and phone for designated viewer check) cannot be empty")
+	}
+
+	var requestingViewer ViewerIdentity
+	err := json.Unmarshal([]byte(viewerIdentityJSON), &requestingViewer)
 	if err != nil {
-		return "", fmt.Errorf("failed to get client ID from context: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal viewerIdentityJSON '%s': %w", viewerIdentityJSON, err)
 	}
-	if clientID == "" {
-		return "", fmt.Errorf("client ID is empty; cannot identify the submitter. Ensure client identity is correctly configured in the network and application")
+	if requestingViewer.Name == "" || requestingViewer.Phone == "" {
+		return nil, fmt.Errorf("viewerIdentityJSON must contain non-empty 'name' and 'phone' fields for the requesting viewer")
 	}
-	return clientID, nil
-}
-*/
 
+	resultsIterator, err := ctx.GetStub().GetStateByRange("", "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get state by range: %w", err)
+	}
+	defer resultsIterator.Close()
+
+	var viewableWills []*Will
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			fmt.Printf("Warning: Failed to get next state from iterator for key '%s': %s. Skipping.\n", queryResponse.Key, err.Error())
+			continue
+		}
+
+		var will Will
+		if queryResponse.Value == nil {
+			fmt.Printf("Warning: Empty value for key '%s'. Skipping.\n", queryResponse.Key)
+			continue
+		}
+
+		if errUnmarshal := json.Unmarshal(queryResponse.Value, &will); errUnmarshal != nil {
+			fmt.Printf("Warning: Failed to unmarshal data for key '%s' into Will object: %s. Value (first 50 bytes): '%s...'. Skipping.\n", queryResponse.Key, errUnmarshal.Error(), firstN(string(queryResponse.Value), 50))
+			continue
+		}
+
+		// Only consider documents of type "Will"
+		if will.ObjectType == "Will" {
+			for _, designatedViewer := range will.DesignatedViewers {
+				if designatedViewer.Name == requestingViewer.Name && designatedViewer.Phone == requestingViewer.Phone {
+					// Ensure Images and DesignatedViewers are not nil
+					if will.Images == nil {
+						will.Images = make([]ImageMetadata, 0)
+					}
+					if will.DesignatedViewers == nil {
+						will.DesignatedViewers = make([]ViewerIdentity, 0)
+					}
+					viewableWills = append(viewableWills, &will)
+					break // Found this viewer in this will, no need to check further for this will
+				}
+			}
+		}
+	}
+
+	if len(viewableWills) == 0 {
+		fmt.Printf("ABstore.GetWillsViewableByMe: No wills found where viewer '%s' (Name: %s, Phone: %s) is a designated viewer.\n", viewerIdentityJSON, requestingViewer.Name, requestingViewer.Phone)
+	} else {
+		fmt.Printf("ABstore.GetWillsViewableByMe: Found %d wills where viewer '%s' (Name: %s, Phone: %s) is a designated viewer.\n", len(viewableWills), viewerIdentityJSON, requestingViewer.Name, requestingViewer.Phone)
+	}
+
+	return viewableWills, nil
+}
 // Helper function to get the first N characters of a string (for logging long strings)
 func firstN(s string, n int) string {
 	if len(s) > n {

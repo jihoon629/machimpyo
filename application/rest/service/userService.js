@@ -64,12 +64,13 @@ async function loginUserService(username, password) {
 }
 
 /**
- * 사용자 아이디로 실명 조회 서비스
+ * 사용자 아이디로 실명,전번 조회 서비스
  */
-async function getUserRealNameByUsernameService(username) {
+async function getUserDetailsByUsernameService(username) {
     try {
+        // SELECT 절에 phone 추가
         const [rows] = await pool.execute(
-            'SELECT name FROM Users WHERE username = ?',
+            'SELECT name, phone FROM Users WHERE username = ?',
             [username]
         );
 
@@ -78,11 +79,12 @@ async function getUserRealNameByUsernameService(username) {
             error.status = 404; // Not Found
             throw error;
         }
-        return { realName: rows[0].name };
+        // 반환 객체에 realName과 phone 모두 포함
+        return { realName: rows[0].name, phone: rows[0].phone };
     } catch (error) {
-        console.error('Service Error in getUserRealNameByUsernameService:', error);
+        console.error('Service Error in getUserDetailsByUsernameService:', error); // 함수명 변경
         if (!error.status) {
-            const serviceError = new Error('실명 조회 처리 중 서버 오류가 발생했습니다.');
+            const serviceError = new Error('사용자 정보 조회 처리 중 서버 오류가 발생했습니다.'); // 메시지 변경
             serviceError.status = 500;
             serviceError.cause = error;
             throw serviceError;
@@ -94,5 +96,5 @@ async function getUserRealNameByUsernameService(username) {
 module.exports = {
     registerUserService,
     loginUserService,
-    getUserRealNameByUsernameService,
+    getUserDetailsByUsernameService,
 };
