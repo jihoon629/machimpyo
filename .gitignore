@@ -18,3 +18,4 @@ explorer/pgdata
 explorer/wallet
 
 chaincode/abstore/go/vendorapplication/rest/gcp-credentials.json
+application/rest/gcp-credentials.json
