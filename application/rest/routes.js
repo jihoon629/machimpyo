@@ -1,6 +1,7 @@
 // application/rest/routes.js
 const express = require('express');
-const mypageController = require('./controller/mypageController'); 
+const mypageController = require('./controller/mypageController');
+
 const userinfoController = require('./controller/userController');
 const getWillController = require('./controller/getWillController');
 const registerWillController = require('./controller/registerWillController');
@@ -50,6 +51,5 @@ router.post('/mypage/update-profile-extended', mypageController.updateUserProfil
 router.post('/mypage/update-password', mypageController.updateUserPassword);
 router.post('/mypage/will-status/register', mypageController.registerWillMeta);
 router.get('/mypage/will-status/list', mypageController.listWillMetaByUser);
-
 
 module.exports = router;
