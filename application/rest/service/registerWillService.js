@@ -79,6 +79,8 @@ async function _registerWillCore(connection, { title, originalContent, designate
     const imagesJSONString = JSON.stringify(imageMetadataForChaincode);
     const offChainStorageRefForText = willDbId; 
 
+    const createdAtString = new Date().toISOString(); // 클라이언트에서 시간 생성
+
     // 체인코드 RegisterWill 함수 시그니처에 맞게 designatedViewersChaincodeArg 전달
     const chaincodeArgs = [
         String(willDbId),
@@ -87,8 +89,10 @@ async function _registerWillCore(connection, { title, originalContent, designate
         String(contentHash),
         String(offChainStorageRefForText),
         designatedViewersChaincodeArg, // 변경된 파라미터명 사용
-        imagesJSONString
+        imagesJSONString,
+        createdAtString
     ];
+
     console.log(`Core (_registerWillCore): Invoking chaincode 'RegisterWill' with args: ${JSON.stringify(chaincodeArgs)}`);
 
     const chaincodeResponseBuffer = await sdk.send(false, 'RegisterWill', chaincodeArgs);
