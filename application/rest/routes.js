@@ -1,6 +1,6 @@
 // application/rest/routes.js
 const express = require('express');
-
+const mypageController = require('./controller/mypageController'); 
 const userinfoController = require('./controller/userController');
 const getWillController = require('./controller/getWillController');
 const registerWillController = require('./controller/registerWillController');
@@ -43,6 +43,13 @@ router.post('/ocr/extract-text', upload.single('file'), ocrController.extractTex
 router.post('/auth/register', userinfoController.registerUser);
 router.post('/auth/login', userinfoController.loginUser);
 router.get('/queryByName/:username', userinfoController.getUserDetailsByUsername);
+
+router.get('/mypage/profile', mypageController.getUserProfile);
+router.post('/mypage/update-profile', mypageController.updateUserProfile);
+router.post('/mypage/update-profile-extended', mypageController.updateUserProfileExtended);
+router.post('/mypage/update-password', mypageController.updateUserPassword);
+router.post('/mypage/will-status/register', mypageController.registerWillMeta);
+router.get('/mypage/will-status/list', mypageController.listWillMetaByUser);
 
 
 module.exports = router;
