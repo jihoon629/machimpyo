@@ -1,12 +1,17 @@
-import React,{ useState } from "react";
+import React from "react";
 import { Routes, Route } from "react-router-dom";
+
+// Layout
 import AppLayOut from "../Layout/AppLayOut";
+
+// Pages
 import HomePage from "../pages/HomePage";
 import LoginPage from "../pages/LoginPage";
 import MyPage from "../pages/MyPage";
 import RegisterPage from "../pages/RegisterPage";
-import NotFoundPage from "../pages/NotFoundPage";
 import WillWritePage from "../pages/WillWritePage";
+import WillDetailPage from "../pages/WillDetailPage";
+import NotFoundPage from "../pages/NotFoundPage";
 import WillList from "../pages/WillList";
 import WillDetails from "../pages/WillDetails";
 import UserProfileComponent from "../pages/UserProfileComponent";
@@ -15,13 +20,20 @@ import UserMyPage from "../pages/MyPage";
 const AppRouter = () => {
   return (
     <Routes>
-      {/* AppLayout을 기본 레이아웃으로 적용 */}
+      {/* Main App Layout - All pages below share the AppLayOut */}
       <Route element={<AppLayOut />}>
+        {/* Public Routes */}
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/mypage" element={<MyPage />} />
         <Route path="/register" element={<RegisterPage />} />
+
+        {/* User Routes */}
+        <Route path="/mypage" element={<MyPage />} />
+
+        {/* Will Routes */}
         <Route path="/write" element={<WillWritePage />} />
+        {/* Dynamic route for Will detail, supports backend integration */}
+        <Route path="/will/:willId" element={<WillDetailPage />} />
         <Route path="/success" element={<WillList/>}/>
         <Route path="/detail/:willId" element={<WillDetails />} />
         <Route path="/name" element={<UserProfileComponent />} />
@@ -29,7 +41,7 @@ const AppRouter = () => {
 
       </Route>
 
-      {/* NotFoundPage를 처리하는 라우트 */}
+      {/* Catch-All Not Found Page */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
