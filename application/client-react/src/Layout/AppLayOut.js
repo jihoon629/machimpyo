@@ -1,7 +1,11 @@
 import React from "react";
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { FaFacebookF, FaTwitter, FaUser } from "react-icons/fa";
+import { useSelector, useDispatch } from "react-redux";
+import { logoutUser } from "../features/user/userSlice";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 /* ---------------- STYLE ---------------- */
 
@@ -167,6 +171,8 @@ const FooterBottom = styled.div`
 
 const AppLayout = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { isLoggedIn, user } = useSelector((state) => state.user);
 
   const handleScrollToSection = (sectionId) => {
     navigate('/');
@@ -174,6 +180,13 @@ const AppLayout = () => {
       const section = document.getElementById(sectionId);
       if (section) section.scrollIntoView({ behavior: 'smooth' });
     }, 100);
+  };
+
+  const handleLogout = () => {
+    dispatch(logoutUser());
+    sessionStorage.clear();
+    toast.success("성공적으로 로그아웃되었습니다.");
+    navigate("/");
   };
 
   return (
@@ -187,9 +200,23 @@ const AppLayout = () => {
           <button onClick={() => handleScrollToSection('review')}>이용 후기</button>
           <button onClick={() => handleScrollToSection('faq')}>FAQ</button>
         </NavMenu>
+
         <NavButtons>
-          <button className="login" onClick={() => navigate('/login')}>로그인</button>
-          <button className="signup" onClick={() => navigate('/register')}>회원가입</button>
+          {isLoggedIn ? (
+            <>
+              <button className="login" onClick={() => navigate('/mypage')}>
+                {user?.username || "마이페이지"}
+              </button>
+              <button className="signup" onClick={handleLogout}>
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="login" onClick={() => navigate('/login')}>로그인</button>
+              <button className="signup" onClick={() => navigate('/register')}>회원가입</button>
+            </>
+          )}
         </NavButtons>
       </Navbar>
 

@@ -1,33 +1,57 @@
-import React, { useState } from 'react';
-import { FaRegCheckCircle, FaCheckCircle, FaLock } from 'react-icons/fa';
-import { Link,useNavigate } from 'react-router-dom';
-import willService from '../services/willService'; // willService import
+import React, { useState } from "react";
+import { FaRegCheckCircle, FaCheckCircle, FaLock } from "react-icons/fa";
+import { Link, useNavigate } from "react-router-dom";
+import willService from "../services/willService";
+import { useDispatch } from "react-redux";
+import { loginSuccess } from "../features/user/userSlice";
+import { toast } from "react-toastify"; // ✅ 추가
+import "react-toastify/dist/ReactToastify.css"; // ✅ 스타일 적용
 
-import './css/LoginPagecss/LoginPage.css';
+import "./css/LoginPagecss/LoginPage.css";
 
 const LoginPage = () => {
   const [saveId, setSaveId] = useState(false);
-  const [id, setId] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const navigate = useNavigate(); 
-
+  const [id, setId] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleLogin = async () => {
     try {
-      setError(''); // Clear previous errors
+      setError("");
       const response = await willService.loginUser({ username: id, password });
-      // Assuming the response contains a token or user data on success
-      console.log('Login successful:', response.data);
-      sessionStorage.setItem('username', id); // 세션에 username 저장
-      navigate('/'); 
-      
 
+      // 로그인 성공 시 Redux에 저장
+      const userData = response.data?.user || {
+        id: response.data?.id,
+        username: id,
+        phone: response.data?.phone,
+      };
+      dispatch(loginSuccess(userData));
+      sessionStorage.setItem("username", id);
+
+      // ✅ 성공 토스트 메시지
+      toast.success(`${id}님, 환영합니다!`, {
+        position: "top-right",
+        autoClose: 3000,
+      });
+
+      navigate("/");
     } catch (err) {
-      alert("로그인 실패 나중에 경고문 추가 해주세요");
-      console.error('Login failed:', err.response ? err.response.data : err.message);
-      setError(err.response && err.response.data && err.response.data.message ? err.response.data.message : '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.');
-      // TODO: Display error message to the user
+      console.error("Login failed:", err.response ? err.response.data : err.message);
+
+      const errorMessage =
+        err.response?.data?.message ||
+        "로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.";
+
+      // ✅ 실패 토스트 메시지
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 3000,
+      });
+
+      setError(errorMessage);
     }
   };
 
@@ -55,14 +79,12 @@ const LoginPage = () => {
       />
 
       <div className="login-option-group">
-        <div
-          className="login-option-item"
-          onClick={() => setSaveId(!saveId)}
-        >
-          {saveId
-            ? <FaCheckCircle color="#574bff" />
-            : <FaRegCheckCircle color="#ccc" />
-          }
+        <div className="login-option-item" onClick={() => setSaveId(!saveId)}>
+          {saveId ? (
+            <FaCheckCircle color="#574bff" />
+          ) : (
+            <FaRegCheckCircle color="#ccc" />
+          )}
           아이디 저장
         </div>
         <div className="login-option-item">
@@ -70,11 +92,12 @@ const LoginPage = () => {
         </div>
       </div>
 
-      <button className="login-button" onClick={handleLogin}>로그인</button>
+      <button className="login-button" onClick={handleLogin}>
+        로그인
+      </button>
 
       <div className="login-find-links">
-        <a href="#">아이디 찾기</a>|
-        <a href="#">비밀번호 찾기</a>
+        <a href="#">아이디 찾기</a>|<a href="#">비밀번호 찾기</a>
       </div>
 
       <div className="login-signup-box">
