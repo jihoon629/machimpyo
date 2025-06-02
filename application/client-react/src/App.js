@@ -1,10 +1,14 @@
 import './App.css';
+import ToastMessage from './common/component/ToastMessage';
 import AppRouter from './routes/AppRouter';
+
+// npm install react-toastify 해주세요.
 
 function App() {
   return (
     <div>
       <AppRouter/>
+      <ToastMessage/>
     </div>
   );
 }
