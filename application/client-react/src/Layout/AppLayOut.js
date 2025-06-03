@@ -1,20 +1,13 @@
-<<<<<<< Updated upstream
-import React from "react";
-=======
 import React, { useState } from "react";
->>>>>>> Stashed changes
 import { Outlet, useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { FaFacebookF, FaTwitter, FaUser } from "react-icons/fa";
 import { useSelector, useDispatch } from "react-redux";
 import { logoutUser } from "../features/user/userSlice";
 import { toast } from "react-toastify";
-<<<<<<< Updated upstream
-=======
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
->>>>>>> Stashed changes
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import "react-toastify/dist/ReactToastify.css";
 
 /* ---------------- STYLE ---------------- */
@@ -27,7 +20,7 @@ const Container = styled.div`
 `;
 
 const Navbar = styled.header`
-font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -144,12 +137,26 @@ const DropdownItem = styled.div`
   }
 `;
 
+// 로그아웃 버튼 스타일
+const LogoutButton = styled.div`
+  padding: 12px 16px;
+  font-size: 14px;
+  color: white;
+  background-color: #dc3545;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-align: left;
+
+  &:hover {
+    background-color: #c82333;
+  }
+`;
 
 const Footer = styled.footer`
   background-color: #1f2937;
   color: #9ca3af;
   padding: 48px 32px 24px;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   margin-top: auto;
 `;
 
@@ -243,16 +250,13 @@ const AppLayout = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { isLoggedIn, user } = useSelector((state) => state.user);
-<<<<<<< Updated upstream
-=======
   const [dropdownOpen, setDropdownOpen] = useState(false);
->>>>>>> Stashed changes
 
   const handleScrollToSection = (sectionId) => {
-    navigate('/');
+    navigate("/");
     setTimeout(() => {
       const section = document.getElementById(sectionId);
-      if (section) section.scrollIntoView({ behavior: 'smooth' });
+      if (section) section.scrollIntoView({ behavior: "smooth" });
     }, 100);
   };
 
@@ -263,55 +267,59 @@ const AppLayout = () => {
     navigate("/");
   };
 
-<<<<<<< Updated upstream
-=======
   const handleGoMypage = () => {
     navigate("/mypage");
     setDropdownOpen(false);
   };
 
->>>>>>> Stashed changes
   return (
     <Container>
       <Navbar>
-        <Logo onClick={() => navigate('/')}>마침표</Logo>
+        <Logo onClick={() => navigate("/")}>마침표</Logo>
         <NavMenu>
-          <button onClick={() => handleScrollToSection('service')}>서비스 소개</button>
-          <button onClick={() => handleScrollToSection('features')}>특징</button>
-          <button onClick={() => handleScrollToSection('review')}>이용 후기</button>
-          <button onClick={() => handleScrollToSection('faq')}>FAQ</button>
+          <button onClick={() => handleScrollToSection("service")}>
+            서비스 소개
+          </button>
+          <button onClick={() => handleScrollToSection("features")}>
+            특징
+          </button>
+          <button onClick={() => handleScrollToSection("review")}>
+            이용 후기
+          </button>
+          <button onClick={() => handleScrollToSection("faq")}>FAQ</button>
         </NavMenu>
 
         <NavButtons>
           {isLoggedIn ? (
-<<<<<<< Updated upstream
-            <>
-              <button className="login" onClick={() => navigate('/mypage')}>
-                {user?.username || "마이페이지"}
-              </button>
-              <button className="signup" onClick={handleLogout}>
-                로그아웃
-              </button>
-            </>
-=======
             <UserTab>
               <UserProfile onClick={() => setDropdownOpen((prev) => !prev)}>
                 <AccountCircleIcon style={{ color: "#6366f1" }} />
                 <UserName>{user?.username || "사용자"}</UserName>
-                {dropdownOpen ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                {dropdownOpen ? (
+                  <KeyboardArrowUpIcon />
+                ) : (
+                  <KeyboardArrowDownIcon />
+                )}
               </UserProfile>
               {dropdownOpen && (
                 <DropdownMenu>
-                  <DropdownItem onClick={handleGoMypage}>마이페이지</DropdownItem>
-                  <DropdownItem onClick={handleLogout}>로그아웃</DropdownItem>
+                  <DropdownItem onClick={handleGoMypage}>
+                    마이페이지
+                  </DropdownItem>
+                  <DropdownItem as={LogoutButton} onClick={handleLogout}>
+                    로그아웃
+                  </DropdownItem>
                 </DropdownMenu>
               )}
             </UserTab>
->>>>>>> Stashed changes
           ) : (
             <>
-              <button className="login" onClick={() => navigate('/login')}>로그인</button>
-              <button className="signup" onClick={() => navigate('/register')}>회원가입</button>
+              <button className="login" onClick={() => navigate("/login")}>
+                로그인
+              </button>
+              <button className="signup" onClick={() => navigate("/register")}>
+                회원가입
+              </button>
             </>
           )}
         </NavButtons>
@@ -325,7 +333,11 @@ const AppLayout = () => {
         <FooterTop>
           <FooterBrand>
             <h4>마침표</h4>
-            <p>블록체인 기반 유언장 공증 플랫폼으로<br />소중한 당신의 마지막 뜻을 안전하게 남기세요.</p>
+            <p>
+              블록체인 기반 유언장 공증 플랫폼으로
+              <br />
+              소중한 당신의 마지막 뜻을 안전하게 남기세요.
+            </p>
             <div className="icons">
               <FaFacebookF />
               <FaTwitter />
@@ -335,9 +347,9 @@ const AppLayout = () => {
 
           <FooterColumn>
             <h5>서비스</h5>
-            <div onClick={() => navigate('/write')}>유언장 작성</div>
-            <div>공증 서비스</div> 
-            <div onClick={() => navigate('/Detail')}>유언장 관리</div>
+            <div onClick={() => navigate("/write")}>유언장 작성</div>
+            <div>공증 서비스</div>
+            <div onClick={() => navigate("/Detail")}>유언장 관리</div>
             <div>보안 정책</div>
           </FooterColumn>
 

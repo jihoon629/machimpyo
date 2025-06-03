@@ -1,15 +1,10 @@
-<<<<<<< Updated upstream
-// src/features/user/userSlice.js
-import { createSlice } from '@reduxjs/toolkit';
-
-=======
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import willService from '../../services/willService';
-import { showToastMessage } from '../common/uiSlice'; // 공통 토스트 메시지 액션
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import willService from "../../services/willService";
+import { showToastMessage } from "../common/uiSlice"; // 공통 토스트 메시지 액션
 
 // ✅ 비동기 로그인 Thunk
 export const loginUser = createAsyncThunk(
-  'user/loginUser',
+  "user/loginUser",
   async ({ username, password }, { dispatch, rejectWithValue }) => {
     try {
       const response = await willService.loginUser({ username, password });
@@ -20,50 +15,37 @@ export const loginUser = createAsyncThunk(
         phone: response.data?.phone,
       };
 
-      sessionStorage.setItem('username', username);
+      sessionStorage.setItem("username", username);
 
-      dispatch(showToastMessage({
-        message: `${username}님, 환영합니다!`,
-        status: 'success',
-      }));
+      dispatch(
+        showToastMessage({
+          message: `${username}님, 환영합니다!`,
+          status: "success",
+        })
+      );
 
       return userData;
     } catch (error) {
       const errorMsg =
-        error.response?.data?.message || '로그인에 실패했습니다.';
+        error.response?.data?.message || "로그인에 실패했습니다.";
 
-      dispatch(showToastMessage({
-        message: errorMsg,
-        status: 'error',
-      }));
+      dispatch(
+        showToastMessage({
+          message: errorMsg,
+          status: "error",
+        })
+      );
 
       return rejectWithValue(errorMsg);
     }
   }
 );
 
->>>>>>> Stashed changes
 const userSlice = createSlice({
-  name: 'user',
+  name: "user",
   initialState: {
     user: null,
     isLoggedIn: false,
-<<<<<<< Updated upstream
-  },
-  reducers: {
-    loginSuccess: (state, action) => {
-      state.user = action.payload;
-      state.isLoggedIn = true;
-    },
-    logoutUser: (state) => {
-      state.user = null;
-      state.isLoggedIn = false;
-    },
-  },
-});
-
-export const { loginSuccess, logoutUser } = userSlice.actions;
-=======
     loading: false,
     error: null,
   },
@@ -92,5 +74,4 @@ export const { loginSuccess, logoutUser } = userSlice.actions;
 });
 
 export const { logoutUser } = userSlice.actions;
->>>>>>> Stashed changes
 export default userSlice.reducer;

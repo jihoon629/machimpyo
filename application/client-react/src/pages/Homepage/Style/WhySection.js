@@ -1,0 +1,51 @@
+// components/styles/WhySectionStyles.js
+import styled from 'styled-components';
+
+export const WhySection = styled.section`
+  background-color: #f5f7ff;
+  padding: 100px 20px;
+  text-align: center;
+`;
+
+export const FeatureGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  max-width: 1200px;
+  margin: 48px auto 0;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+export const FeatureCard = styled.div`
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  text-align: left;
+
+  h4 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: #111827;
+  }
+
+  p {
+    font-size: 14px;
+    color: #6b7280;
+    line-height: 1.5;
+  }
+`;
+
+export const FeatureIcon = styled.img`
+  width: 32px;
+  height: 32px;
+  margin-bottom: 12px;
+`;
