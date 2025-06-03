@@ -1,10 +1,20 @@
+<<<<<<< Updated upstream
 import React from "react";
+=======
+import React, { useState } from "react";
+>>>>>>> Stashed changes
 import { Outlet, useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { FaFacebookF, FaTwitter, FaUser } from "react-icons/fa";
 import { useSelector, useDispatch } from "react-redux";
 import { logoutUser } from "../features/user/userSlice";
 import { toast } from "react-toastify";
+<<<<<<< Updated upstream
+=======
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+>>>>>>> Stashed changes
 import "react-toastify/dist/ReactToastify.css";
 
 /* ---------------- STYLE ---------------- */
@@ -17,6 +27,7 @@ const Container = styled.div`
 `;
 
 const Navbar = styled.header`
+font-family: 'Inter', sans-serif;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -52,7 +63,9 @@ const NavMenu = styled.nav`
 
 const NavButtons = styled.div`
   display: flex;
+  align-items: center;
   gap: 12px;
+  position: relative;
 
   button {
     font-size: 14px;
@@ -74,6 +87,63 @@ const NavButtons = styled.div`
     border: none;
   }
 `;
+
+const UserTab = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  font-family: "Inter", sans-serif;
+`;
+
+const UserProfile = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  background-color: #f1f5f9;
+  border-radius: 20px;
+  padding: 6px 12px;
+
+  &:hover {
+    background-color: #e0e7ff;
+  }
+`;
+
+const UserName = styled.span`
+  font-weight: 500;
+  font-size: 14px;
+  color: #2d3282;
+`;
+
+const DropdownMenu = styled.div`
+  position: absolute;
+  top: 48px;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  z-index: 1000;
+  width: 160px;
+  overflow: hidden;
+`;
+
+const DropdownItem = styled.div`
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: #f9fafb;
+  }
+
+  &:not(:last-child) {
+    border-bottom: 1px solid #f3f4f6;
+  }
+`;
+
 
 const Footer = styled.footer`
   background-color: #1f2937;
@@ -173,6 +243,10 @@ const AppLayout = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { isLoggedIn, user } = useSelector((state) => state.user);
+<<<<<<< Updated upstream
+=======
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+>>>>>>> Stashed changes
 
   const handleScrollToSection = (sectionId) => {
     navigate('/');
@@ -189,9 +263,16 @@ const AppLayout = () => {
     navigate("/");
   };
 
+<<<<<<< Updated upstream
+=======
+  const handleGoMypage = () => {
+    navigate("/mypage");
+    setDropdownOpen(false);
+  };
+
+>>>>>>> Stashed changes
   return (
     <Container>
-      {/* Navbar */}
       <Navbar>
         <Logo onClick={() => navigate('/')}>마침표</Logo>
         <NavMenu>
@@ -203,6 +284,7 @@ const AppLayout = () => {
 
         <NavButtons>
           {isLoggedIn ? (
+<<<<<<< Updated upstream
             <>
               <button className="login" onClick={() => navigate('/mypage')}>
                 {user?.username || "마이페이지"}
@@ -211,6 +293,21 @@ const AppLayout = () => {
                 로그아웃
               </button>
             </>
+=======
+            <UserTab>
+              <UserProfile onClick={() => setDropdownOpen((prev) => !prev)}>
+                <AccountCircleIcon style={{ color: "#6366f1" }} />
+                <UserName>{user?.username || "사용자"}</UserName>
+                {dropdownOpen ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+              </UserProfile>
+              {dropdownOpen && (
+                <DropdownMenu>
+                  <DropdownItem onClick={handleGoMypage}>마이페이지</DropdownItem>
+                  <DropdownItem onClick={handleLogout}>로그아웃</DropdownItem>
+                </DropdownMenu>
+              )}
+            </UserTab>
+>>>>>>> Stashed changes
           ) : (
             <>
               <button className="login" onClick={() => navigate('/login')}>로그인</button>
@@ -220,12 +317,10 @@ const AppLayout = () => {
         </NavButtons>
       </Navbar>
 
-      {/* Main content */}
       <main>
         <Outlet />
       </main>
 
-      {/* Footer */}
       <Footer>
         <FooterTop>
           <FooterBrand>

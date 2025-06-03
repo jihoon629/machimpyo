@@ -8,50 +8,20 @@ import { toast } from "react-toastify"; // ✅ 추가
 import "react-toastify/dist/ReactToastify.css"; // ✅ 스타일 적용
 
 import "./css/LoginPagecss/LoginPage.css";
+import "./css/LoginPagecss/LoginPage.css";
 
 const LoginPage = () => {
   const [saveId, setSaveId] = useState(false);
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const handleLogin = async () => {
-    try {
-      setError("");
-      const response = await willService.loginUser({ username: id, password });
+    const result = await dispatch(loginUser({ username: id, password }));
 
-      // 로그인 성공 시 Redux에 저장
-      const userData = response.data?.user || {
-        id: response.data?.id,
-        username: id,
-        phone: response.data?.phone,
-      };
-      dispatch(loginSuccess(userData));
-      sessionStorage.setItem("username", id);
-
-      // ✅ 성공 토스트 메시지
-      toast.success(`${id}님, 환영합니다!`, {
-        position: "top-right",
-        autoClose: 3000,
-      });
-
-      navigate("/");
-    } catch (err) {
-      console.error("Login failed:", err.response ? err.response.data : err.message);
-
-      const errorMessage =
-        err.response?.data?.message ||
-        "로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.";
-
-      // ✅ 실패 토스트 메시지
-      toast.error(errorMessage, {
-        position: "top-right",
-        autoClose: 3000,
-      });
-
-      setError(errorMessage);
+    if (loginUser.fulfilled.match(result)) {
+      navigate("/"); // ✅ 로그인 성공 시 홈으로 이동
     }
   };
 
@@ -63,6 +33,7 @@ const LoginPage = () => {
         <h1 className="login-title-text">마침표</h1>
         <div className="login-line" />
       </div>
+
       <input
         className="login-input"
         type="text"
@@ -92,6 +63,9 @@ const LoginPage = () => {
         </div>
       </div>
 
+      <button className="login-button" onClick={handleLogin}>
+        로그인
+      </button>
       <button className="login-button" onClick={handleLogin}>
         로그인
       </button>

@@ -1,7 +1,7 @@
 import axios from 'axios'; //백엔드 API 호출 모듈 (axios)
 
 // 이 baseURL 설정은 유지합니다. 각 API 호출은 이 URL 뒤에 붙는 상대 경로를 사용합니다.
-axios.defaults.baseURL = 'http://192.168.72.128:8001';
+axios.defaults.baseURL = 'http://192.168.72.129:8001';
 
 /**
  * 텍스트 기반 유언장을 등록합니다.

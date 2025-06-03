@@ -6,8 +6,12 @@ import './css/Homepagecss/WhySection.css';
 import './css/Homepagecss/WillPreviewSection.css';
 import './css/Homepagecss/TestimonialsSection.css';
 import './css/Homepagecss/StartFooterSection.css';
+import { useNavigate } from "react-router-dom"; 
+
 
 const HomePage = () => {
+  const navigate = useNavigate(); 
+
   const features = [
     { title: "블록체인으로 위변조 방지", desc: "기록된 유언장은 변경이 불가해 위변조 걱정이 없습니다.",image: "/images/B1.PNG"},
     { title: "법적 효력 연동", desc: "공증 및 인증 기관과 연동하여 법적 효력을 인정받습니다.",image: "/images/B2.PNG"},
@@ -31,7 +35,7 @@ const HomePage = () => {
             지정한 사람만 열람 가능한, 위조 걱정 없는 유언장을 남겨보세요.
           </p>
           <div className="button-group">
-            <button className="primary-button">유언장 작성 시작하기</button>
+            <button className="primary-button" onClick={() => navigate("/write")}>유언장 작성 시작하기</button>
             <button className="secondary-button">서비스 소개 보기</button>
           </div>
         </div>
