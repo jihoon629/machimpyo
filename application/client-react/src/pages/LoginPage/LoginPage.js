@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { FaRegCheckCircle, FaCheckCircle, FaLock } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   LoginContainer,
   LoginSubtext,
@@ -13,10 +14,35 @@ import {
   LoginButton,
   LoginFindLinks,
   LoginSignupBox,
-} from './style/LoginPagestyle';
+} from './style/LoginPageStyle';
+import { loginUser } from './../../features/user/userSlice';
 
 const LoginPage = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const { loading, error } = useSelector((state) => state.user);
+
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [saveId, setSaveId] = useState(false);
+
+  const handleLogin = async () => {
+    if (!username || !password) {
+      alert('아이디와 비밀번호를 모두 입력해주세요.');
+      return;
+    }
+
+    try {
+      const resultAction = await dispatch(loginUser({ username, password }));
+
+      if (loginUser.fulfilled.match(resultAction)) {
+        navigate('/'); // 로그인 성공 시 홈으로 이동
+      }
+    } catch (err) {
+      console.error('로그인 오류:', err);
+    }
+  };
 
   return (
     <LoginContainer>
@@ -28,8 +54,18 @@ const LoginPage = () => {
         <LoginLine />
       </LoginTitleWrapper>
 
-      <LoginInput type="text" placeholder="아이디" />
-      <LoginInput type="password" placeholder="비밀번호" />
+      <LoginInput
+        type="text"
+        placeholder="아이디"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+      />
+      <LoginInput
+        type="password"
+        placeholder="비밀번호"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
 
       <LoginOptionGroup>
         <LoginOptionItem onClick={() => setSaveId(!saveId)}>
@@ -45,11 +81,12 @@ const LoginPage = () => {
         </LoginOptionItem>
       </LoginOptionGroup>
 
-      <LoginButton>로그인</LoginButton>
+      <LoginButton onClick={handleLogin} disabled={loading}>
+        {loading ? '로그인 중...' : '로그인'}
+      </LoginButton>
 
       <LoginFindLinks>
-        <a href="#">아이디 찾기</a>|
-        <a href="#">비밀번호 찾기</a>
+        <a href="#">아이디 찾기</a>|<a href="#">비밀번호 찾기</a>
       </LoginFindLinks>
 
       <LoginSignupBox>
