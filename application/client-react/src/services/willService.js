@@ -1,7 +1,7 @@
 import axios from 'axios'; //백엔드 API 호출 모듈 (axios)
 
 // 이 baseURL 설정은 유지합니다. 각 API 호출은 이 URL 뒤에 붙는 상대 경로를 사용합니다.
-axios.defaults.baseURL = 'http://192.168.72.129:8001';
+axios.defaults.baseURL = process.env.REACT_APP_API_BASE_URL; //따로 env 파일 만들어서 REACT_APP_API_BASE_URL=http://localhost:8001 이 코드로 관리 -> gitignore에도 env 올려서 깃헙에 안올라가게끔. 개발할땐 이 방법이 훨씬 편함..
 
 /**
  * 텍스트 기반 유언장을 등록합니다.
