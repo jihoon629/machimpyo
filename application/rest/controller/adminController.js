@@ -1,4 +1,6 @@
 const pool = require('../db');
+const fs = require('fs');
+const path = require('path');
 
 // 관리자 권한 체크 함수
 function isNotAdmin(req) {
@@ -133,11 +135,60 @@ async function updateWillMetaStatus(req, res) {
     }
 }
 
+// 유족 사망 증빙 자료 업로드 + 상태 변경
+async function uploadDeathProof(req, res) {
+    if (isNotAdmin(req)) return res.status(403).json({ error: '관리자 권한이 필요합니다.' });
+
+    const { id, status } = req.body;
+    const file = req.file;
+
+    if (!file || !id) {
+        return res.status(400).json({ error: '필수 정보 누락: 파일 또는 id' });
+    }
+
+    const filePath = path.join(__dirname, '../../uploads', file.originalname);
+    fs.writeFileSync(filePath, file.buffer);
+
+    try {
+        await pool.execute(
+            'UPDATE WillMeta SET status = ?, death_proof_path = ? WHERE id = ?',
+            [status || 'confirmed_deceased', filePath, id]
+        );
+
+        console.log(`[ 증빙 업로드 및 상태 변경] id=${id}`);
+        res.json({ message: '사망 증빙 파일 업로드 및 상태 변경 완료' });
+    } catch (err) {
+        console.error('[ uploadDeathProof 실패]:', err);
+        res.status(500).json({ error: '사망 증빙 처리 실패' });
+    }
+}
+
+// 증빙 파일 다운로드
+async function downloadDeathProof(req, res) {
+    if (isNotAdmin(req)) return res.status(403).json({ error: '관리자 권한이 필요합니다.' });
+
+    const { id } = req.params;
+    try {
+        const [rows] = await pool.execute('SELECT death_proof_path FROM WillMeta WHERE id = ?', [id]);
+        if (rows.length === 0 || !rows[0].death_proof_path) {
+            return res.status(404).json({ error: '증빙 파일 없음' });
+        }
+
+        const filePath = rows[0].death_proof_path;
+        res.download(filePath);
+    } catch (err) {
+        console.error('[ downloadDeathProof 실패]:', err);
+        res.status(500).json({ error: '파일 다운로드 실패' });
+    }
+}
+
 module.exports = {
     getAllUsers,
     deleteUser,
     getAllWills,
     getWillDetailById,
     getAllWillMeta,
-    updateWillMetaStatus
+    updateWillMetaStatus,
+    uploadDeathProof,
+    downloadDeathProof
 };
