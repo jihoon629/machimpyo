@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { FaRegCheckCircle, FaCheckCircle, FaLock } from 'react-icons/fa';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { FaRegCheckCircle, FaCheckCircle, FaLock } from "react-icons/fa";
+import { Link, useNavigate } from "react-router-dom";
 import {
   LoginContainer,
   LoginSubtext,
@@ -14,8 +14,8 @@ import {
   LoginButton,
   LoginFindLinks,
   LoginSignupBox,
-} from './style/LoginPageStyle';
-import { loginUser } from './../../features/user/userSlice';
+} from "./style/LoginPageStyle";
+import { loginUser } from "./../../features/user/userSlice";
 
 const LoginPage = () => {
   const dispatch = useDispatch();
@@ -23,24 +23,31 @@ const LoginPage = () => {
 
   const { loading, error } = useSelector((state) => state.user);
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [saveId, setSaveId] = useState(false);
 
   const handleLogin = async () => {
     if (!username || !password) {
-      alert('아이디와 비밀번호를 모두 입력해주세요.');
+      alert("아이디와 비밀번호를 모두 입력해주세요.");
       return;
     }
 
     try {
+      console.log("🟡 로그인 요청 시작:", { username, password });
+
       const resultAction = await dispatch(loginUser({ username, password }));
 
+      console.log("🟢 로그인 결과:", resultAction);
+
       if (loginUser.fulfilled.match(resultAction)) {
-        navigate('/'); // 로그인 성공 시 홈으로 이동
+        console.log("✅ 로그인 성공! 홈으로 이동합니다.");
+        navigate("/");
+      } else {
+        console.warn("⚠️ 로그인 실패:", resultAction.payload);
       }
     } catch (err) {
-      console.error('로그인 오류:', err);
+      console.error("❌ 로그인 중 예외 발생:", err);
     }
   };
 
@@ -82,7 +89,7 @@ const LoginPage = () => {
       </LoginOptionGroup>
 
       <LoginButton onClick={handleLogin} disabled={loading}>
-        {loading ? '로그인 중...' : '로그인'}
+        {loading ? "로그인 중..." : "로그인"}
       </LoginButton>
 
       <LoginFindLinks>

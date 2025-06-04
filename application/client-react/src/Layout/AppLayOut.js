@@ -4,13 +4,13 @@ import styled from "styled-components";
 import { FaFacebookF, FaTwitter, FaUser } from "react-icons/fa";
 import { useSelector, useDispatch } from "react-redux";
 import { logoutUser } from "../features/user/userSlice";
-import { toast } from "react-toastify";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import "react-toastify/dist/ReactToastify.css";
+import ToastMessage from "../common/component/ToastMessage";
+import { useEffect } from "react";
 
-/* ---------------- STYLE ---------------- */
+/* --- Styled Components 생략된 부분은 동일 --- */
 
 const Container = styled.div`
   background-color: #f9fafb;
@@ -137,7 +137,6 @@ const DropdownItem = styled.div`
   }
 `;
 
-// 로그아웃 버튼 스타일
 const LogoutButton = styled.div`
   padding: 12px 16px;
   font-size: 14px;
@@ -249,8 +248,14 @@ const FooterBottom = styled.div`
 const AppLayout = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { isLoggedIn, user } = useSelector((state) => state.user);
+
+  const { username } = useSelector((state) => state.user);
+  const isLoggedIn = !!username;
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    setDropdownOpen(false); // 로그인/로그아웃할 때마다 드롭다운은 닫힘
+  }, [isLoggedIn]);
 
   const handleScrollToSection = (sectionId) => {
     navigate("/");
@@ -261,9 +266,8 @@ const AppLayout = () => {
   };
 
   const handleLogout = () => {
-    dispatch(logoutUser());
+    dispatch(logoutUser()); // ✅ 내부에서 토스트 메시지 디스패치
     sessionStorage.clear();
-    toast.success("성공적으로 로그아웃되었습니다.");
     navigate("/");
   };
 
@@ -274,6 +278,7 @@ const AppLayout = () => {
 
   return (
     <Container>
+      <ToastMessage /> {/* ✅ 상태 기반 토스트 메시지 전역 처리 */}
       <Navbar>
         <Logo onClick={() => navigate("/")}>마침표</Logo>
         <NavMenu>
@@ -294,7 +299,7 @@ const AppLayout = () => {
             <UserTab>
               <UserProfile onClick={() => setDropdownOpen((prev) => !prev)}>
                 <AccountCircleIcon style={{ color: "#6366f1" }} />
-                <UserName>{user?.username || "사용자"}</UserName>
+                <UserName>{username || "사용자"}</UserName>
                 {dropdownOpen ? (
                   <KeyboardArrowUpIcon />
                 ) : (
@@ -324,11 +329,9 @@ const AppLayout = () => {
           )}
         </NavButtons>
       </Navbar>
-
       <main>
         <Outlet />
       </main>
-
       <Footer>
         <FooterTop>
           <FooterBrand>

@@ -1,12 +1,16 @@
 // src/features/store.js
 import { configureStore } from "@reduxjs/toolkit";
-import userReducer from './features/user/userSlice';
+import userSlice from './user/userSlice';
+import uiSlice from './common/uiSlice';
+import postSlice from './post/willSlice';
 // import yourSlice from './yourSlice';
 
 const store = configureStore({
   reducer: {
     // yourReducer: yourSlice
-    user: userReducer,
+    user: userSlice,
+    ui: uiSlice,
+    post:postSlice,
   },
 });
 
