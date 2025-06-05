@@ -22,8 +22,8 @@ const Container = styled.div`
   max-width: 1000px;
   margin: 40px auto;
   padding: 24px;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto,
-    "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR",
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+    Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR",
     "Malgun Gothic", sans-serif;
 `;
 
@@ -260,11 +260,12 @@ const ViewerBox = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: ${props => props.approved ? '#f0fdf4' : '#fefce8'}; /* Light green or yellow */
+  background-color: ${(props) =>
+    props.approved ? "#f0fdf4" : "#fefce8"}; /* Light green or yellow */
   padding: 12px 16px;
   border-radius: 8px;
   margin-bottom: 12px;
-  border-left: 4px solid ${props => props.approved ? '#22c55e' : '#facc15'}; /* Green or Yellow */
+  border-left: 4px solid ${(props) => (props.approved ? "#22c55e" : "#facc15")}; /* Green or Yellow */
   strong {
     color: #1f2937;
   }
@@ -279,7 +280,8 @@ const SubLabel = styled.span`
 const Status = styled.span`
   font-size: 0.875rem;
   font-weight: 600;
-  color: ${props => props.approved ? '#16a34a' : '#ca8a04'}; /* Darker Green or Yellow */
+  color: ${(props) =>
+    props.approved ? "#16a34a" : "#ca8a04"}; /* Darker Green or Yellow */
 `;
 
 const NotarizeStatus = styled.div`
@@ -374,34 +376,33 @@ const HashStatus = styled.span`
   }
 `;
 
-
-
 const WillDetailPage = () => {
   const [willDetails, setWillDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const { willId } = useParams();
   const navigate = useNavigate();
 
   const [showFullContentHash, setShowFullContentHash] = useState(false);
   // 클라이언트 측 해시 계산 관련 상태
-  const [calculatedClientHash, setCalculatedClientHash] = useState('');
+  const [calculatedClientHash, setCalculatedClientHash] = useState("");
   const [isCalculatingClientHash, setIsCalculatingClientHash] = useState(false);
   const [hashMatchStatus, setHashMatchStatus] = useState(null); // null, 'matching', 'mismatch', 'error'
   const [showFullClientHash, setShowFullClientHash] = useState(false);
 
-
   // SHA-256 해시 계산 헬퍼 함수
   async function calculateSHA256(message) {
-    if (typeof message !== 'string' || !message) {
-      return '';
+    if (typeof message !== "string" || !message) {
+      return "";
     }
     try {
       const encoder = new TextEncoder();
       const data = encoder.encode(message);
-      const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+      const hashBuffer = await window.crypto.subtle.digest("SHA-256", data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      const hashHex = hashArray
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
       return hashHex;
     } catch (e) {
       console.error("Error calculating SHA256:", e);
@@ -417,13 +418,13 @@ const WillDetailPage = () => {
     }
     const fetchWillData = async () => {
       setIsLoading(true);
-      setError('');
+      setError("");
       setShowFullContentHash(false);
       setShowFullClientHash(false);
-      setCalculatedClientHash('');
+      setCalculatedClientHash("");
       setHashMatchStatus(null);
       try {
-        const loggedInUsername = sessionStorage.getItem('username');
+        const loggedInUsername = sessionStorage.getItem("username");
         if (!loggedInUsername) {
           setError("로그인이 필요합니다. 사용자 정보를 찾을 수 없습니다.");
           setIsLoading(false);
@@ -433,7 +434,12 @@ const WillDetailPage = () => {
         setWillDetails(data);
       } catch (err) {
         console.error("Error fetching will details:", err);
-        setError(err.response?.data?.message || err.response?.data?.error || err.message || "유언장 상세 정보를 불러오는데 실패했습니다.");
+        setError(
+          err.response?.data?.message ||
+            err.response?.data?.error ||
+            err.message ||
+            "유언장 상세 정보를 불러오는데 실패했습니다."
+        );
       } finally {
         setIsLoading(false);
       }
@@ -447,33 +453,35 @@ const WillDetailPage = () => {
       setIsCalculatingClientHash(true);
       setHashMatchStatus(null); // 비교 시작 전 상태 초기화
       calculateSHA256(willDetails.originalContent)
-        .then(clientHash => {
+        .then((clientHash) => {
           setCalculatedClientHash(clientHash);
           if (clientHash && clientHash !== "해시 계산 오류") {
-            setHashMatchStatus(clientHash === willDetails.contentHash ? 'matching' : 'mismatch');
+            setHashMatchStatus(
+              clientHash === willDetails.contentHash ? "matching" : "mismatch"
+            );
           } else {
-            setHashMatchStatus('error'); // 해시 계산 자체에서 오류 발생
+            setHashMatchStatus("error"); // 해시 계산 자체에서 오류 발생
           }
         })
         .catch(() => {
           setCalculatedClientHash("해시 계산 오류");
-          setHashMatchStatus('error');
+          setHashMatchStatus("error");
         })
         .finally(() => {
           setIsCalculatingClientHash(false);
         });
     } else if (willDetails && !willDetails.originalContent) {
-        setCalculatedClientHash("원본 내용 없음");
-        setHashMatchStatus(null); // 원본 내용이 없으면 비교 불가
+      setCalculatedClientHash("원본 내용 없음");
+      setHashMatchStatus(null); // 원본 내용이 없으면 비교 불가
     } else {
       // willDetails가 없거나, 필요한 정보가 부족할 경우 초기화
-      setCalculatedClientHash('');
+      setCalculatedClientHash("");
       setHashMatchStatus(null);
     }
   }, [willDetails]);
 
-
-  if (isLoading) { /* ... 로딩 UI ... */ 
+  if (isLoading) {
+    /* ... 로딩 UI ... */
     return (
       <LoadingContainer>
         <FaSpinner className="animate-spin" style={{ marginRight: "10px" }} />
@@ -481,14 +489,16 @@ const WillDetailPage = () => {
       </LoadingContainer>
     );
   }
-  if (error) { /* ... 에러 UI ... */ 
+  if (error) {
+    /* ... 에러 UI ... */
     return (
       <Container>
         <ErrorContainer>{error}</ErrorContainer>
       </Container>
     );
   }
-  if (!willDetails) { /* ... 데이터 없음 UI ... */ 
+  if (!willDetails) {
+    /* ... 데이터 없음 UI ... */
     return (
       <Container>
         <p>유언장 정보를 찾을 수 없습니다.</p>
@@ -496,10 +506,16 @@ const WillDetailPage = () => {
     );
   }
 
-  const creationDate = willDetails.createdAt ? new Date(willDetails.createdAt).toLocaleDateString() : 'N/A';
-  const modificationDate = willDetails.modifiedAt ? new Date(willDetails.modifiedAt).toLocaleDateString() : creationDate;
-  const viewerCount = Array.isArray(willDetails.beneficiaries) ? willDetails.beneficiaries.length : 0;
-  const isBlockchainSecured = true; 
+  const creationDate = willDetails.createdAt
+    ? new Date(willDetails.createdAt).toLocaleDateString()
+    : "N/A";
+  const modificationDate = willDetails.modifiedAt
+    ? new Date(willDetails.modifiedAt).toLocaleDateString()
+    : creationDate;
+  const viewerCount = Array.isArray(willDetails.beneficiaries)
+    ? willDetails.beneficiaries.length
+    : 0;
+  const isBlockchainSecured = true;
   const isEncrypted = true;
 
   return (
@@ -552,65 +568,93 @@ const WillDetailPage = () => {
         <LeftColumn>
           <Card>
             <SectionTitle>유언장 내용</SectionTitle>
-            <Paragraph as="pre" style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}> 
+            <Paragraph
+              as="pre"
+              style={{ whiteSpace: "pre-wrap", fontFamily: "inherit" }}
+            >
               {willDetails.originalContent || "내용 없음"}
             </Paragraph>
           </Card>
 
-          {willDetails.imageDataUrls && willDetails.imageDataUrls.length > 0 && (
-            <Card>
-              <SectionTitle>첨부 이미지</SectionTitle>
-              <DocList>
-                {willDetails.imageDataUrls.map((img, index) => (
-                  img.url ? (
-                    <DocItem key={img.id || index}>
-                      <DocInfo>
-                        <FaFileAlt size={16} style={{ marginRight: "8px" }} />
-                        <span>{img.fileName || `첨부 이미지 ${index + 1}`}</span>
-                      </DocInfo>
-                      <DocMeta>
-                        <a href={img.url} download={img.fileName || `will_image_${index + 1}.png`}>
-                          <FaDownload color="#6366f1" style={{ marginLeft: "8px" }} />
-                        </a>
-                      </DocMeta>
-                    </DocItem>
-                  ) : ( 
-                    <DocItem key={img.id || index}>
-                      <DocInfo style={{color: 'red'}}>
-                        <FaFileAlt size={16} style={{ marginRight: "8px" }} />
-                        <span>{img.fileName || `첨부 이미지 ${index + 1}`} (오류: {img.error || "로드 실패"})</span>
-                      </DocInfo>
-                    </DocItem>
-                  )
-                ))}
-              </DocList>
-            </Card>
-          )}
+          {willDetails.imageDataUrls &&
+            willDetails.imageDataUrls.length > 0 && (
+              <Card>
+                <SectionTitle>첨부 이미지</SectionTitle>
+                <DocList>
+                  {willDetails.imageDataUrls.map((img, index) =>
+                    img.url ? (
+                      <DocItem key={img.id || index}>
+                        <DocInfo>
+                          <FaFileAlt size={16} style={{ marginRight: "8px" }} />
+                          <span>
+                            {img.fileName || `첨부 이미지 ${index + 1}`}
+                          </span>
+                        </DocInfo>
+                        <DocMeta>
+                          <a
+                            href={img.url}
+                            download={
+                              img.fileName || `will_image_${index + 1}.png`
+                            }
+                          >
+                            <FaDownload
+                              color="#6366f1"
+                              style={{ marginLeft: "8px" }}
+                            />
+                          </a>
+                        </DocMeta>
+                      </DocItem>
+                    ) : (
+                      <DocItem key={img.id || index}>
+                        <DocInfo style={{ color: "red" }}>
+                          <FaFileAlt size={16} style={{ marginRight: "8px" }} />
+                          <span>
+                            {img.fileName || `첨부 이미지 ${index + 1}`} (오류:{" "}
+                            {img.error || "로드 실패"})
+                          </span>
+                        </DocInfo>
+                      </DocItem>
+                    )
+                  )}
+                </DocList>
+              </Card>
+            )}
         </LeftColumn>
 
         <RightColumn>
-           {Array.isArray(willDetails.beneficiaries) && willDetails.beneficiaries.length > 0 && (
-             <Card>
-              <FlexHeader>
-                <SectionTitle>지정 열람자</SectionTitle>
-              </FlexHeader>
-              {willDetails.beneficiaries.map((beneficiary, index) => (
-                <ViewerBox key={index} approved={true}> 
-                  <div>
-                    <strong>{typeof beneficiary === 'string' ? beneficiary : beneficiary.name || '이름 없음'}</strong> 
-                  </div>
-                  <Status approved={true}>승인됨</Status>
-                </ViewerBox>
-              ))}
-            </Card>
-          )}
-          
+          {Array.isArray(willDetails.beneficiaries) &&
+            willDetails.beneficiaries.length > 0 && (
+              <Card>
+                <FlexHeader>
+                  <SectionTitle>지정 열람자</SectionTitle>
+                </FlexHeader>
+                {willDetails.beneficiaries.map((beneficiary, index) => (
+                  <ViewerBox key={index} approved={true}>
+                    <div>
+                      <strong>
+                        {typeof beneficiary === "string"
+                          ? beneficiary
+                          : beneficiary.name || "이름 없음"}
+                      </strong>
+                    </div>
+                    <Status approved={true}>승인됨</Status>
+                  </ViewerBox>
+                ))}
+              </Card>
+            )}
+
           {willDetails.notarizationRequested && (
             <Card>
               <SectionTitle>공증 상태</SectionTitle>
               <NotarizeStatus>
-                <FaCheckCircle style={{ color: "#10b981", marginRight: "6px" }} />
-                <span>{willDetails.notarizationStatus === "Completed" ? "공증 완료" : "공증 진행중/신청됨"}</span>
+                <FaCheckCircle
+                  style={{ color: "#10b981", marginRight: "6px" }}
+                />
+                <span>
+                  {willDetails.notarizationStatus === "Completed"
+                    ? "공증 완료"
+                    : "공증 진행중/신청됨"}
+                </span>
               </NotarizeStatus>
             </Card>
           )}
@@ -620,26 +664,49 @@ const WillDetailPage = () => {
             <SecureInfo>
               <InfoRow>
                 <span>유언장 ID (체인)</span>
-                <span>{willDetails.id || 'N/A'}</span>
+                <span>{willDetails.id || "N/A"}</span>
               </InfoRow>
               <InfoRow
-                className={willDetails.originalContent && calculatedClientHash && calculatedClientHash !== "해시 계산 오류" && calculatedClientHash !== "원본 내용 없음" ? "clickable" : ""}
+                className={
+                  willDetails.originalContent &&
+                  calculatedClientHash &&
+                  calculatedClientHash !== "해시 계산 오류" &&
+                  calculatedClientHash !== "원본 내용 없음"
+                    ? "clickable"
+                    : ""
+                }
                 onClick={() => {
-                  if (willDetails.originalContent && calculatedClientHash && calculatedClientHash !== "해시 계산 오류" && calculatedClientHash !== "원본 내용 없음") {
+                  if (
+                    willDetails.originalContent &&
+                    calculatedClientHash &&
+                    calculatedClientHash !== "해시 계산 오류" &&
+                    calculatedClientHash !== "원본 내용 없음"
+                  ) {
                     setShowFullClientHash(!showFullClientHash);
                   }
                 }}
-                title={willDetails.originalContent && calculatedClientHash && calculatedClientHash !== "해시 계산 오류" && calculatedClientHash !== "원본 내용 없음" ? (showFullClientHash ? "클릭하여 클라이언트 해시 축약" : "클릭하여 클라이언트 해시 전체 보기") : "원본 내용 해시 (클라이언트 측 계산)"}
+                title={
+                  willDetails.originalContent &&
+                  calculatedClientHash &&
+                  calculatedClientHash !== "해시 계산 오류" &&
+                  calculatedClientHash !== "원본 내용 없음"
+                    ? showFullClientHash
+                      ? "클릭하여 클라이언트 해시 축약"
+                      : "클릭하여 클라이언트 해시 전체 보기"
+                    : "원본 내용 해시 (클라이언트 측 계산)"
+                }
               >
                 <span>내용 해시 (현재 브라우저)</span>
                 <span>
-                  {isCalculatingClientHash 
-                    ? "계산 중..." 
-                    : (calculatedClientHash
-                        ? (showFullClientHash ? calculatedClientHash : `${calculatedClientHash.substring(0,10)}...`)
-                        : (willDetails.originalContent ? "계산 준비" : "원본 내용 없음")
-                      )
-                  }
+                  {isCalculatingClientHash
+                    ? "계산 중..."
+                    : calculatedClientHash
+                    ? showFullClientHash
+                      ? calculatedClientHash
+                      : `${calculatedClientHash.substring(0, 10)}...`
+                    : willDetails.originalContent
+                    ? "계산 준비"
+                    : "원본 내용 없음"}
                 </span>
               </InfoRow>
               <InfoRow
@@ -649,34 +716,52 @@ const WillDetailPage = () => {
                     setShowFullContentHash(!showFullContentHash);
                   }
                 }}
-                title={willDetails.contentHash ? (showFullContentHash ? "클릭하여 저장된 해시 축약" : "클릭하여 저장된 해시 전체 보기") : "저장된 내용 해시 (블록체인)"}
+                title={
+                  willDetails.contentHash
+                    ? showFullContentHash
+                      ? "클릭하여 저장된 해시 축약"
+                      : "클릭하여 저장된 해시 전체 보기"
+                    : "저장된 내용 해시 (블록체인)"
+                }
               >
                 <span>내용 해시 (블록체인 기록)</span>
                 <span>
                   {willDetails.contentHash
-                    ? (showFullContentHash ? willDetails.contentHash : `${willDetails.contentHash.substring(0,10)}...`)
-                    : 'N/A'}
+                    ? showFullContentHash
+                      ? willDetails.contentHash
+                      : `${willDetails.contentHash.substring(0, 10)}...`
+                    : "N/A"}
                 </span>
               </InfoRow>
               <InfoRow>
                 <span>해시 일치 여부</span>
                 {isCalculatingClientHash ? (
-                  <HashStatus className="calculating"><FaSpinner className="animate-spin"/> 확인 중...</HashStatus>
-                ) : hashMatchStatus === 'matching' ? (
-                  <HashStatus className="matching"><FaCheckCircle /> 일치</HashStatus>
-                ) : hashMatchStatus === 'mismatch' ? (
-                  <HashStatus className="mismatch"><FaTimesCircle /> 불일치</HashStatus>
-                ) : hashMatchStatus === 'error' ? (
-                  <HashStatus className="mismatch"><FaTimesCircle /> 계산 오류</HashStatus>
+                  <HashStatus className="calculating">
+                    <FaSpinner className="animate-spin" /> 확인 중...
+                  </HashStatus>
+                ) : hashMatchStatus === "matching" ? (
+                  <HashStatus className="matching">
+                    <FaCheckCircle /> 일치
+                  </HashStatus>
+                ) : hashMatchStatus === "mismatch" ? (
+                  <HashStatus className="mismatch">
+                    <FaTimesCircle /> 불일치
+                  </HashStatus>
+                ) : hashMatchStatus === "error" ? (
+                  <HashStatus className="mismatch">
+                    <FaTimesCircle /> 계산 오류
+                  </HashStatus>
                 ) : (
-                  <HashStatus><FaQuestionCircle /> 확인 불가</HashStatus>
+                  <HashStatus>
+                    <FaQuestionCircle /> 확인 불가
+                  </HashStatus>
                 )}
               </InfoRow>
               <InfoRow>
                 <span>텍스트 DB 참조 ID</span>
-                <span>{willDetails.offChainStorageRef || 'N/A'}</span>
+                <span>{willDetails.offChainStorageRef || "N/A"}</span>
               </InfoRow>
-              <InfoRow> 
+              <InfoRow>
                 <span>암호화 방식</span>
                 <span>AES-256-GCM</span>
               </InfoRow>
