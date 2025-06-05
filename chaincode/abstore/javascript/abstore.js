@@ -451,5 +451,54 @@ const ABstore = class {
         console.info(`Successfully updated status of will (HASHED ID '${hashedWillID}') to '${newStatus}'`);
         return Buffer.from(`Status of will (HASHED ID '${hashedWillID}') updated to '${newStatus}' successfully.`);
     }
+    async GetWillStatusCountsByTestatorId(stub, args) {
+        console.info('--- GetWillStatusCountsByTestatorId ---');
+        if (args.length !== 1) {
+            throw new Error('Incorrect number of arguments. Expecting 1 for GetWillStatusCountsByTestatorId (hashedTestatorIdToSearch).');
+        }
+        const hashedTestatorIdToSearch = args[0];
+        console.info(`Retrieving will status counts for HASHED testatorId '${hashedTestatorIdToSearch}'`);
+
+        if (!hashedTestatorIdToSearch) {
+            throw new Error('hashedTestatorIdToSearch cannot be empty');
+        }
+
+        const statusCounts = {
+            "REGISTERED": 0,
+            "ACTIVE": 0,
+            "EXPIRED": 0,
+            "EXECUTED": 0,
+            "REVOKED": 0
+            // 필요시 다른 상태 추가
+        };
+
+        const iterator = await stub.getStateByRange('', ''); // 모든 상태를 가져옴 (CouchDB 사용 시 더 효율적인 쿼리 가능)
+        let result = await iterator.next();
+        while (!result.done) {
+            if (result.value && result.value.value.length > 0) {
+                const strValue = result.value.value.toString('utf8');
+                try {
+                    const record = JSON.parse(strValue);
+                    // docType을 확인하고, testatorId가 일치하는지 확인
+                    if (record.docType === 'Will' && record.testatorId === hashedTestatorIdToSearch) {
+                        if (record.status && statusCounts.hasOwnProperty(record.status)) {
+                            statusCounts[record.status]++;
+                        } else if (record.status) {
+                            console.warn(`GetWillStatusCountsByTestatorId: Found will with unknown status '${record.status}' for testator '${hashedTestatorIdToSearch}'.`);
+                            // 알 수 없는 상태를 별도로 집계하거나 무시할 수 있음
+                            // statusCounts["UNKNOWN"] = (statusCounts["UNKNOWN"] || 0) + 1;
+                        }
+                    }
+                } catch (err) {
+                    console.warn(`GetWillStatusCountsByTestatorId: Warning: Failed to unmarshal data for key '${result.value.key}'. Skipping. Error: ${err.message}`);
+                }
+            }
+            result = await iterator.next();
+        }
+        await iterator.close();
+
+        console.info(`Found status counts for HASHED testatorId '${hashedTestatorIdToSearch}':`, JSON.stringify(statusCounts));
+        return Buffer.from(JSON.stringify(statusCounts));
+    }
 };
 shim.start(new ABstore());

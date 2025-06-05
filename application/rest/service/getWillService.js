@@ -489,11 +489,71 @@ async function getWillDetailsForAdminService(hashedBlockchainWillId) {
     }
 }
 
+
+
+/**
+ * 특정 사용자가 작성한 유언장들의 상태별 개수를 조회합니다.
+ * username은 해시하여 체인코드에 전달합니다.
+ */
+async function getWillStatusCountsService(username) {
+    if (!username) {
+        const error = new Error("사용자 이름(username)이 필요합니다.");
+        error.status = 400; // Bad Request
+        throw error;
+    }
+
+    try {
+        const hashedTestatorId = calculateHash(String(username));
+        console.log(`Service (getWillStatusCountsService): Requesting GetWillStatusCountsByTestatorId from chaincode for HASHED testatorId: ${hashedTestatorId} (original: ${username})`);
+
+        const resultBuffer = await sdk.send(
+            true, // isQuery (조회 트랜잭션)
+            'GetWillStatusCountsByTestatorId', // 호출할 체인코드 함수 이름
+            [hashedTestatorId] // 체인코드 함수에 전달할 인자 배열
+        );
+
+        let statusCounts = { // 기본값 (체인코드에서 결과가 없거나 비어있을 경우 대비)
+            "REGISTERED": 0,
+            "ACTIVE": 0,
+            "EXPIRED": 0,
+            "EXECUTED": 0,
+            "REVOKED": 0
+        };
+
+        if (resultBuffer && resultBuffer.length > 0) {
+            try {
+                const parsedCounts = JSON.parse(resultBuffer.toString());
+                // 체인코드에서 반환한 모든 키를 statusCounts에 병합 (새로운 상태가 추가될 수 있으므로)
+                for (const key in parsedCounts) {
+                    if (parsedCounts.hasOwnProperty(key)) {
+                        statusCounts[key] = parsedCounts[key];
+                    }
+                }
+                console.log(`Service (getWillStatusCountsService): Received status counts for HASHED testatorId '${hashedTestatorId}':`, statusCounts);
+            } catch (parseError) {
+                console.error(`Service (getWillStatusCountsService): Failed to parse status counts from chaincode for HASHED testatorId '${hashedTestatorId}'. Raw: ${resultBuffer.toString()}. Error: ${parseError.message}`);
+                // 파싱 오류 시 기본값 또는 오류 전파 고려
+                // 여기서는 기본값 사용, 필요시 오류 throw
+            }
+        } else {
+            console.log(`Service (getWillStatusCountsService): No status counts data returned from chaincode for HASHED testatorId '${hashedTestatorId}'. Returning zero counts.`);
+        }
+        return statusCounts;
+
+    } catch (error) {
+        console.error(`Service Error (getWillStatusCountsService) for user ${username}:`, error.stack || error);
+        const serviceError = new Error(`유언장 상태별 개수 조회 중 오류가 발생했습니다 (사용자: ${username}).`);
+        serviceError.status = error.status || 500; // 체인코드에서 발생한 오류의 status를 사용하거나, 기본 500
+        serviceError.cause = error; // 원인 에러 첨부
+        throw serviceError;
+    }
+}
 // module.exports 에 새로운 함수 추가
 module.exports = {
     getMyWillsService,
     getWillDetailsService,
     getWillImageService,
     getWillsViewableByUserService,
-    getWillDetailsForAdminService // 추가
+    getWillDetailsForAdminService, // 추가,
+    getWillStatusCountsService
 };
