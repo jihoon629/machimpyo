@@ -38,6 +38,6 @@ router.get('/admin/wills', adminController.getAllWills); //전체 유언장 목�
 router.get('/admin/wills/:willId', adminController.getWillDetailById); // 특정 유언장 상세 조회
 router.get('/mypage/status-counts/:username', mypageController.getMyWillStatusCounts);
 router.get('/kkk/:username',mypageController.getUserProfile);
-// router.patch('/will-meta/:id/status', adminController.updateWillMetaStatus); // 유언장 상태(사망 여부) 승인/거절 업데이트
+router.put('/admin/wills/:willId/status', adminController.updateWillStatusByAdmin);
 
 module.exports = router;

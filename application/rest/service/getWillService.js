@@ -548,6 +548,56 @@ async function getWillStatusCountsService(username) {
         throw serviceError;
     }
 }
+
+async function updateWillStatusByAdminService(hashedWillId, newStatus) {
+    console.log(`Service (Admin): Attempting to update status for will (Hashed ID: ${hashedWillId}) to '${newStatus}'`);
+
+    const chaincodeFunction = 'UpdateWillStatusByAdmin';
+    const adminToken = "admin"; // 체인코드 'UpdateWillStatusByAdmin'에서 사용하는 토큰과 일치해야 함
+    const chaincodeArgs = [String(hashedWillId), String(newStatus), adminToken];
+
+    try {
+        console.log(`Service (Admin): Calling chaincode '${chaincodeFunction}' with args: ${JSON.stringify(chaincodeArgs)}`);
+        
+        // sdk.send의 첫 번째 인자는 isQuery 여부, 상태 변경은 false
+        const resultBuffer = await sdk.send(false, chaincodeFunction, chaincodeArgs);
+
+        if (!resultBuffer) {
+            // 체인코드가 성공적으로 실행되었으나 반환값이 없는 경우 (일반적으로 메시지를 반환함)
+            // 또는 sdk.send 내부에서 오류 없이 null을 반환한 경우 (가능성은 낮음)
+            console.warn(`Service (Admin): Chaincode function '${chaincodeFunction}' for Hashed ID ${hashedWillId} executed, but returned no message buffer. Assuming success based on no error thrown.`);
+            return `Status of will (Hashed ID: ${hashedWillId}) likely updated to '${newStatus}', but no confirmation message from chaincode.`;
+        }
+        
+        const resultMessage = resultBuffer.toString('utf8');
+        console.log(`Service (Admin): Chaincode '${chaincodeFunction}' for Hashed ID ${hashedWillId} to status '${newStatus}' executed successfully. Message: ${resultMessage}`);
+        return resultMessage; // 체인코드에서 반환된 성공 메시지
+
+    } catch (chaincodeError) {
+        console.error(`Service (Admin): Chaincode error during '${chaincodeFunction}' for HashedWillID ${hashedWillId} to status ${newStatus}: ${chaincodeError.message || chaincodeError}`);
+        
+        const serviceError = new Error(`관리자 권한으로 유언장(Hashed ID: ${hashedWillId}) 상태를 '${newStatus}'(으)로 변경 중 오류 발생`);
+        
+        // 체인코드에서 발생한 오류 메시지에 따라 상태 코드 분기
+        if (chaincodeError.message) {
+            serviceError.message = chaincodeError.message; // 체인코드 오류 메시지를 그대로 사용
+            if (chaincodeError.message.toLowerCase().includes("does not exist")) {
+                serviceError.status = 404;
+            } else if (chaincodeError.message.toLowerCase().includes("unauthorized")) {
+                serviceError.status = 403;
+            } else if (chaincodeError.message.toLowerCase().includes("invalid newstatus") || chaincodeError.message.toLowerCase().includes("incorrect number of arguments")) {
+                serviceError.status = 400; // 잘못된 요청
+            } else {
+                serviceError.status = 500; // 일반적인 체인코드 오류
+            }
+        } else {
+            serviceError.status = 500; // 원인 불명 오류
+        }
+        serviceError.cause = chaincodeError;
+        throw serviceError;
+    }
+}
+
 // module.exports 에 새로운 함수 추가
 module.exports = {
     getMyWillsService,
@@ -555,5 +605,6 @@ module.exports = {
     getWillImageService,
     getWillsViewableByUserService,
     getWillDetailsForAdminService, // 추가,
-    getWillStatusCountsService
+    getWillStatusCountsService,
+    updateWillStatusByAdminService
 };

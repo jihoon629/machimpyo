@@ -91,60 +91,108 @@ async function deleteUser(req, res) {
 }
 
 // 전체 유언장 목록 조회
-async function getAllWills(req, res) {  
-      let logUsername = 'N/A';
-    if (req.user && req.user.username) {
+async function getAllWills(req, res) {
+    let logUsername = 'N/A';
+        if (req.user && req.user.username) {
         logUsername = req.user.username;
     } else if (req.session && req.session.username) {
         logUsername = req.session.username + " (from session)";
     }
     console.log(`getAllWills called by user: ${logUsername}`);
 
-
-    
-
-   // 1. 관리자 권한 확인 (isNotAdmin은 비동기 함수이므로 await 사용)
-    if (await isNotAdmin(req)) { // isNotAdmin이 true이면 (즉, 관리자가 아니면)
+    if (await isNotAdmin(req)) {
         return res.status(403).json({ error: '관리자 권한이 필요합니다.' });
     }
 
-    // 이 지점은 호출자가 외부 DB 기준으로 관리자임이 확인된 상태입니다.
+    let connection; // DB 연결 변수
 
     try {
         console.log('[📜 전체 유언장 목록 조회 요청 (관리자)]');
 
-        // 2. 체인코드 호출을 위한 준비
         const chaincodeFunction = 'GetAllWillsByAdmin';
-        const adminChaincodeToken = "admin"; // 체인코드가 첫 번째 인자로 기대하는 토큰
+        const adminChaincodeToken = "admin";
         const chaincodeArgs = [adminChaincodeToken];
 
-        // 3. sdk.send 함수를 사용하여 체인코드 호출
-  
         console.log(`Calling chaincode '${chaincodeFunction}' with args: ${JSON.stringify(chaincodeArgs)} using SDK user '${process.env.FABRIC_USER_ID || 'appUser'}'`);
         
         const resultBuffer = await sdk.send(true, chaincodeFunction, chaincodeArgs);
 
-        if (!resultBuffer) {
-            // sdk.send에서 오류가 발생하지 않았지만 결과 버퍼가 없는 경우 (예: 체인코드가 빈 버퍼 반환)
+        if (!resultBuffer || resultBuffer.length === 0) {
             console.warn(`[getAllWills] Chaincode function '${chaincodeFunction}' returned no result or an empty buffer.`);
-            return res.status(200).json([]); // 빈 배열 또는 적절한 응답
+            return res.status(200).json([]);
         }
         
-        const allWillsString = resultBuffer.toString('utf8');
-        const allWills = JSON.parse(allWillsString);
+        const allWillsFromChaincode = JSON.parse(resultBuffer.toString('utf8'));
 
-        console.log(`[전체 유언장 수] ${allWills.length}건`);
-        res.json(allWills);
+        if (!Array.isArray(allWillsFromChaincode) || allWillsFromChaincode.length === 0) {
+            console.log(`[전체 유언장 수] 0건 (체인코드 반환 값 없음 또는 빈 배열)`);
+            return res.json([]);
+        }
+
+        console.log(`[체인코드로부터 받은 유언장 수] ${allWillsFromChaincode.length}건`);
+
+        connection = await pool.getConnection();
+        const enrichedWills = [];
+
+        for (const bcWill of allWillsFromChaincode) {
+            const willDbId = bcWill.offChainStorageRef; 
+            let originalTitle = null;
+            let originalTestatorUsername = null;
+            let originalCreatedAt = bcWill.createdAt; // 기본값은 체인코드의 값으로 설정
+
+            if (willDbId) {
+                try {
+                    // Wills 테이블의 testator_id와 Users 테이블의 id를 조인하고, Wills 테이블의 created_at을 가져옵니다.
+                    const query = `
+                        SELECT 
+                            w.title AS originalTitle,
+                            w.created_at AS originalCreatedAt, 
+                            u.username AS originalTestatorUsername 
+                        FROM Wills w
+                        LEFT JOIN Users u ON w.testator_id = u.username 
+
+                        WHERE w.id = ? 
+                    `;
+                    
+                    const [rows] = await connection.execute(query, [willDbId]);
+                    if (rows.length > 0) {
+                        originalTitle = rows[0].originalTitle;
+                        originalTestatorUsername = rows[0].originalTestatorUsername;
+                        originalCreatedAt = rows[0].originalCreatedAt; // DB에서 가져온 생성일로 업데이트
+                    } else {
+                        console.warn(`[getAllWills] DB에서 willDbId ${willDbId}에 해당하는 유언장 정보를 찾을 수 없습니다.`);
+                    }
+                } catch (dbError) {
+                    console.error(`[getAllWills] DB 조회 중 오류 (willDbId: ${willDbId}): ${dbError.message}`);
+                }
+            } else {
+                console.warn(`[getAllWills] 체인코드 유언장 데이터에 offChainStorageRef가 없습니다:`, bcWill);
+            }
+
+            enrichedWills.push({
+                ...bcWill, // 체인코드 데이터 (여기에도 createdAt이 있을 수 있음)
+                originalTitle: originalTitle,
+                originalTestatorUsername: originalTestatorUsername,
+                createdAt: originalCreatedAt // DB의 created_at을 우선적으로 사용 (또는 originalCreatedAt 필드명 사용 결정)
+                                            // 프론트엔드에서 createdAt을 사용하고 있으므로, 이 필드명을 DB 값으로 덮어쓰거나
+                                            // 프론트엔드를 수정하여 originalCreatedAt을 사용하도록 할 수 있습니다.
+                                            // 여기서는 createdAt을 DB 값으로 덮어쓰는 것으로 가정합니다.
+            });
+        }
+        
+        if (connection) connection.release();
+
+        console.log(`[최종 반환 유언장 수 (원본 정보 포함)] ${enrichedWills.length}건`);
+        res.json(enrichedWills);
 
     } catch (error) {
+        if (connection) connection.release();
         console.error(`[getAllWills 실패]: ${error.message}`);
-        // sdk.send에서 throw한 오류는 이미 status와 message를 가질 수 있음
         const statusCode = error.status || 500;
         const errorMessage = error.message || '전체 유언장 목록 조회 중 서버 오류 발생';
         res.status(statusCode).json({ error: errorMessage });
     }
 }
-
 async function getWillDetailById(req, res) {
     let logUsername = 'N/A';
     // ... (기존 사용자 로깅 부분 유지) ...
@@ -186,14 +234,55 @@ async function getWillDetailById(req, res) {
 
 
 // 유언장 상태(사망 여부) 승인/거절 업데이트
-async function updateWillMetaStatus(req, res) {
+async function updateWillStatusByAdmin(req, res) {
+    let logUsername = 'N/A';
+    if (req.user && req.user.username) {
+        logUsername = req.user.username;
+    } else if (req.session && req.session.username) {
+        logUsername = req.session.username + " (from session)";
+    }
+    console.log(`updateWillStatusByAdmin called by user: ${logUsername}`);
 
+    // 1. 관리자 권한 확인
+    if (await isNotAdmin(req)) {
+        return res.status(403).json({ error: '관리자 권한이 필요합니다.' });
+    }
+
+    // 2. 파라미터 및 요청 본문에서 값 추출
+    const { willId } = req.params; // URL 경로에서 해시된 유언장 ID 추출
+    const { newStatus } = req.body;  // 요청 본문에서 새로운 상태 값 추출
+
+    if (!willId) {
+        return res.status(400).json({ error: 'willId 파라미터(해시된 유언장 ID)가 필요합니다.' });
+    }
+    if (!newStatus) {
+        return res.status(400).json({ error: '요청 본문에 newStatus 필드가 필요합니다.' });
+    }
+
+  
+
+    try {
+        console.log(`[유언장 상태 변경 요청 (관리자)] Hashed ID: ${willId}, New Status: ${newStatus}`);
+
+        // 3. 서비스 함수 호출 (getWillService에 추가할 함수)
+        const resultMessage = await getWillService.updateWillStatusByAdminService(willId, newStatus);
+
+        console.log(`[유언장 상태 변경 성공 (관리자)] Hashed ID: ${willId}, Result: ${resultMessage}`);
+        res.json({ message: resultMessage, willId: willId, newStatus: newStatus });
+
+    } catch (error) {
+        console.error(`[updateWillStatusByAdmin 실패] Hashed ID: ${willId}: ${error.message || error}`);
+        const statusCode = error.status || 500; // 서비스 함수에서 status를 설정할 수 있음
+        const errorMessage = error.message || `ID가 ${willId}인 유언장의 상태를 ${newStatus}(으)로 변경 중 서버 오류 발생`;
+        res.status(statusCode).json({ error: errorMessage });
+    }
 }
+
 
 module.exports = {
     getAllUsers,
     deleteUser,
     getAllWills,
     getWillDetailById,
-    updateWillMetaStatus
+    updateWillStatusByAdmin
 };
