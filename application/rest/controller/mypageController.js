@@ -13,7 +13,7 @@ async function getUserProfile(req, res) {
 
     try {
         const [rows] = await pool.execute(
-            'SELECT username, name, phone, birth, address, gender, role FROM Users WHERE username = ?',
+            'SELECT email, name, phone, birth, address, gender, role FROM Users WHERE email = ?',
             [username]
         );
 
@@ -42,7 +42,7 @@ async function updateUserPassword(req, res) {
     try {
         // 현재 비밀번호 확인
         const [users] = await pool.execute(
-            'SELECT * FROM Users WHERE username = ? AND password = ?',
+            'SELECT * FROM Users WHERE email = ? AND password = ?',
             [username, currentPassword]
         );
 
@@ -51,7 +51,7 @@ async function updateUserPassword(req, res) {
         }
 
         // 비밀번호 업데이트
-        const updateQuery = `UPDATE Users SET password = ? WHERE username = ?`;
+        const updateQuery = `UPDATE Users SET password = ? WHERE email = ?`;
         await pool.execute(updateQuery, [newPassword, username]);
 
         res.json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
@@ -72,7 +72,7 @@ async function updateUserProfile(req, res) {
     }
 
     try {
-        const updateQuery = `UPDATE Users SET phone = ? WHERE username = ?`;
+        const updateQuery = `UPDATE Users SET phone = ? WHERE email = ?`;
         const [result] = await pool.execute(updateQuery, [phone, username]);
         res.json({ message: '프로필이 성공적으로 수정되었습니다.' });
     } catch (err) {
@@ -111,7 +111,7 @@ async function updateUserProfileExtended(req, res) {
         }
 
         values.push(username);
-        const query = `UPDATE Users SET ${fields.join(', ')} WHERE username = ?`;
+        const query = `UPDATE Users SET ${fields.join(', ')} WHERE email = ?`;
         await pool.execute(query, values);
 
         res.json({ message: '프로필이 성공적으로 수정되었습니다.' });

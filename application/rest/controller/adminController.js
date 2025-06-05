@@ -147,9 +147,9 @@ async function getAllWills(req, res) {
                         SELECT 
                             w.title AS originalTitle,
                             w.created_at AS originalCreatedAt, 
-                            u.username AS originalTestatorUsername 
+                            u.email AS originalTestatorUsername 
                         FROM Wills w
-                        LEFT JOIN Users u ON w.testator_id = u.username 
+                        LEFT JOIN Users u ON w.testator_id = u.email 
 
                         WHERE w.id = ? 
                     `;
