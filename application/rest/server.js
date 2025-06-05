@@ -11,12 +11,30 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+
+// CORS 미들웨어 설정 수정
+const corsOptions = {
+  origin: 'http://localhost:3000', // 클라이언트의 출처를 명시적으로 지정
+  credentials: true,             // 자격 증명 정보(쿠키 등) 허용
+  optionsSuccessStatus: 200      // 일부 레거시 브라우저 호환성
+};
+
+app.use(cors(corsOptions)); // 수정된 CORS 설정 적용
+
+// Preflight 요청을 명시적으로 처리할 필요가 있다면 (선택 사항이지만 권장)
+// 모든 경로의 OPTIONS 요청에 대해 CORS 헤더를 응답하도록 설정
+// app.options('*', cors(corsOptions)); 
+// 참고: 위 app.use(cors(corsOptions)); 가 대부분의 preflight 요청을 처리하지만,
+//       특정 라우터나 미들웨어 순서에 따라 명시적 app.options가 필요할 수도 있습니다.
+//       일단은 app.use(cors(corsOptions)); 만으로 테스트해보시고, 
+//       여전히 preflight 문제가 발생하면 app.options('*', cors(corsOptions)); 줄의 주석을 해제해보세요.
+
 
 app.use('/', willRoutes); // <--- 이 옵션을 사용해야 현재 routes.js와 클라이언트의 '/will/register'가 맞습니다.
 
 
 // 2. 정적 파일 제공을 위한 경로 설정
+// ... (이하 기존 코드 동일) ...
 const clientPaths = [
     path.join(__dirname, '..', 'client'),
 ];
@@ -40,8 +58,18 @@ if (staticPathToServe) {
                 to: function(context) {
                     return context.parsedUrl.pathname;
                 }
+            },
+            // 만약 다른 API prefix (예: /auth/*, /admin/*)가 있다면 그것도 추가
+            // 현재 /admin/wills API도 사용 중이므로 추가하는 것이 좋습니다.
+            {
+                from: /^\/auth\/.*$/, 
+                to: function(context) { return context.parsedUrl.pathname; }
+            },
+            {
+                from: /^\/admin\/.*$/, 
+                to: function(context) { return context.parsedUrl.pathname; }
             }
-            // 만약 다른 API prefix (예: /auth/*)가 있다면 그것도 추가
+            // 다른 API 엔드포인트 prefix가 있다면 여기에 추가
         ],
     }));
     // 4. 정적 파일 제공 미들웨어

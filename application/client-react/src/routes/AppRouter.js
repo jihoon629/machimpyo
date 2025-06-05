@@ -16,7 +16,7 @@ import WillList from "../pages/WillList";
 import WillDetails from "../pages/WillDetails";
 import UserProfileComponent from "../pages/UserProfileComponent";
 import UserMyPage from "../pages/MyPage";
-
+import AdminWillsPage from "../pages/AdminWillsPage";
 const AppRouter = () => {
   return (
     <Routes>
@@ -38,6 +38,7 @@ const AppRouter = () => {
         <Route path="/detail/:willId" element={<WillDetails />} />
         <Route path="/name" element={<UserProfileComponent />} />
         <Route path="/MyPage" element={<UserMyPage />} />
+        <Route path="/test" element={<AdminWillsPage />} />
 
       </Route>
 
