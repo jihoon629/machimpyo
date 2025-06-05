@@ -327,6 +327,85 @@ func firstN(s string, n int) string {
 	return s
 }
 
+
+func (s *ABstore) UpdateWillStatusByAdmin(ctx contractapi.TransactionContextInterface, willID string, newStatus string) error {
+	fmt.Printf("ABstore.UpdateWillStatusByAdmin: Attempting to update status of will ID '%s' to '%s'\n", willID, newStatus)
+
+	// 1. (중요) 관리자 접근 제어 로직
+	// 실제 운영 환경에서는 호출자의 ID를 확인하여 관리자 권한이 있는지 검사해야 합니다.
+	// 예를 들어, 클라이언트 ID의 MSPID를 확인하거나 특정 속성을 확인할 수 있습니다.
+	// clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
+	// if err != nil {
+	// 	 return fmt.Errorf("failed to get client's MSPID: %w", err)
+	// }
+	// if clientMSPID != "AdminOrgMSP" { // "AdminOrgMSP"는 예시이며 실제 관리자 조직의 MSPID로 변경해야 합니다.
+	// 	 return fmt.Errorf("caller with MSPID '%s' is not authorized to update will status. Required MSPID: 'AdminOrgMSP'", clientMSPID)
+	// }
+	// 또는 클라이언트 ID에 특정 admin 속성이 있는지 확인할 수도 있습니다.
+	// isAdmin, _, err := ctx.GetClientIdentity().GetAttributeValue("hf.Type") // 예시 속성
+	// if err != nil || !isAdmin || hfTypeValue != "admin"
+	// ...
+
+	// 여기서는 시연을 위해 간단히 로그만 남기고 통과합니다.
+	fmt.Println("ABstore.UpdateWillStatusByAdmin: Admin check placeholder. Ensure to implement proper access control.")
+
+
+	if willID == "" {
+		return fmt.Errorf("willID cannot be empty")
+	}
+	if newStatus == "" {
+		return fmt.Errorf("newStatus cannot be empty")
+	}
+
+	// 2. 새로운 상태 값 유효성 검사 (선택 사항이지만 권장)
+	// 예: 허용되는 상태 값 목록 정의
+	allowedStatuses := map[string]bool{
+		"REGISTERED": true,
+		"ACTIVE":     true, // 예시: 유언 효력 발생
+		"EXPIRED":    true, // 예시: 유언 만료
+		"EXECUTED":   true, // 예시: 유언 집행 완료
+		"REVOKED":    true, // 예시: 유언 철회
+		// 필요에 따라 다른 상태 추가
+	}
+	if !allowedStatuses[newStatus] {
+		return fmt.Errorf("invalid newStatus: '%s'. Allowed statuses are: REGISTERED, ACTIVE, EXPIRED, EXECUTED, REVOKED", newStatus)
+	}
+
+
+	willJSON, err := ctx.GetStub().GetState(willID)
+	if err != nil {
+		return fmt.Errorf("failed to read will '%s' from world state: %w", willID, err)
+	}
+	if willJSON == nil {
+		return fmt.Errorf("will '%s' does not exist", willID)
+	}
+
+	var will Will
+	err = json.Unmarshal(willJSON, &will)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal JSON for will '%s': %w", willID, err)
+	}
+
+	// 3. 상태 업데이트
+	fmt.Printf("ABstore.UpdateWillStatusByAdmin: Current status of will '%s' is '%s'. Updating to '%s'.\n", willID, will.Status, newStatus)
+	will.Status = newStatus
+	// 필요하다면 상태 변경 시간 등을 기록할 수 있습니다 (예: will.LastStatusUpdate = time.Now().UTC().Format(time.RFC3339))
+
+	updatedWillJSON, err := json.Marshal(will)
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated will struct for ID '%s': %w", willID, err)
+	}
+
+	err = ctx.GetStub().PutState(willID, updatedWillJSON)
+	if err != nil {
+		return fmt.Errorf("failed to put updated will '%s' to world state: %w", willID, err)
+	}
+
+	fmt.Printf("ABstore.UpdateWillStatusByAdmin: Successfully updated status of will ID '%s' to '%s'\n", willID, newStatus)
+	return nil
+}
+
+
 // main function starts the chaincode in the container environment.
 func main() {
 	chaincode, err := contractapi.NewChaincode(new(ABstore))
