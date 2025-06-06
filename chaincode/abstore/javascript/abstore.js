@@ -4,7 +4,7 @@ const util = require('util'); // console.log 포맷팅 등에 사용 가능
 
 const ABstore = class {
 
-    // Initialize the chaincode
+    // 정리 x
     async Init(stub) {
         console.info('========= ABstore Init (Shim Style) =========');
         try {
@@ -16,6 +16,7 @@ const ABstore = class {
         }
     }
 
+        // 정리 x
     async Invoke(stub) {
         console.info('========= ABstore Invoke (Shim Style) =========');
         let ret = stub.getFunctionAndParameters();
@@ -39,21 +40,8 @@ const ABstore = class {
         }
     }
 
-    // --- 트랜잭션 함수들 ---
 
-    /**
-     * RegisterWill (shim 스타일)
-     * params: [
-     *   hashedId,
-     *   hashedTestatorId,
-     *   hashedTitle,
-     *   contentHash (original content's hash),
-     *   originalOffChainStorageRef,
-     *   hashedDesignatedViewersDataString (JSON string of array with hashed name/phone),
-     *   hashedImagesJSON (hash of the entire images JSON string - NOT to be parsed here),
-     *   hashedCreatedAtString
-     * ]
-     */
+    //유언장 작성 체인코드 
     async RegisterWill(stub, args) {
       console.info('--- RegisterWill ---');
       if (args.length !== 8) {
@@ -120,11 +108,7 @@ const ABstore = class {
       return `Will with HASHED ID '${hashedId}' registered successfully. Transaction ID: ${txId}`;
     }
 
-    /**
-     * GetWillDetails (shim 스타일)
-     * params: [willID (실제로는 hashedWillID), requesterUsername (해시된 값이어야 함), viewerIdentityJSON (내부 name/phone이 해시된 값이어야 함)]
-     * 참고: 이 함수는 해시된 데이터를 반환합니다. will.images는 해시된 문자열입니다.
-     */
+ // 유언장 상세정보
     async GetWillDetails(stub, args) {
         console.info('--- GetWillDetails ---');
         if (args.length !== 3) {
@@ -195,10 +179,7 @@ const ABstore = class {
         return Buffer.from(JSON.stringify(will)); // will.images는 해시된 문자열 상태로 반환
     }
 
-    /**
-     * Helper function to ensure will object has default/correct types for certain fields before sending.
-     * Modifies the record directly.
-     */
+
     _normalizeWillRecord(record, recordKey) {
         if (typeof record.images !== 'string') {
              console.warn(`_normalizeWillRecord: record.images for key ${recordKey} is not a string, setting to empty string. Value:`, record.images);
@@ -212,11 +193,7 @@ const ABstore = class {
     }
 
 
-    /**
-     * GetMyWills (shim 스타일)
-     * params: [hashedTestatorIdToSearch]
-     * 참고: 이 함수는 해시된 데이터가 포함된 유언장 목록을 반환합니다. will.images는 해시된 문자열입니다.
-     */
+    //내가 작성한 유언장 목록
     async GetMyWills(stub, args) {
         console.info('--- GetMyWills ---');
         if (args.length !== 1) {
@@ -253,11 +230,7 @@ const ABstore = class {
         return Buffer.from(JSON.stringify(myWills)); // will.images는 해시된 문자열 상태로 반환
     }
 
-    /**
-     * GetWillsViewableByMe (shim 스타일)
-     * params: [viewerIdentityJSONWithHashedNamePhone] (내부 name, phone이 해시된 JSON 문자열)
-     * 참고: 이 함수는 해시된 데이터가 포함된 유언장 목록을 반환합니다. will.images는 해시된 문자열입니다.
-     */
+    //지정 열람자가 볼수있는 유언장 목록
     async GetWillsViewableByMe(stub, args) {
         console.info('--- GetWillsViewableByMe ---');
         if (args.length !== 1) {
@@ -309,10 +282,6 @@ const ABstore = class {
         return Buffer.from(JSON.stringify(viewableWills)); // will.images는 해시된 문자열 상태로 반환
     }
 
-    /**
-     * Helper function to get all wills from the ledger.
-     * Returns wills with hashed fields. will.images is a hash string.
-     */
     async _getAllWillsFromLedger(stub) {
         console.info('--- _getAllWillsFromLedger (Helper) ---');
         const iterator = await stub.getStateByRange('', '');
@@ -338,11 +307,8 @@ const ABstore = class {
         return allWills;
     }
 
-    /**
-     * GetAllWillsByAdmin (shim 스타일)
-     * params: [adminToken]
-     * 참고: 이 함수는 해시된 데이터가 포함된 유언장 목록을 반환합니다. will.images는 해시된 문자열입니다.
-     */
+
+    // 관리자용 체인코드 전체 유언장 목록 확인
     async GetAllWillsByAdmin(stub, args) {
         console.info('--- GetAllWillsByAdmin ---');
         if (args.length !== 1) {
@@ -363,11 +329,7 @@ const ABstore = class {
         return Buffer.from(JSON.stringify(allWillsList)); // will.images는 해시된 문자열 상태로 반환
     }
 
-    /**
-     * GetWillDetailsByAdmin (shim 스타일)
-     * params: [adminToken, hashedWillID]
-     * 참고: 이 함수는 해시된 데이터를 반환합니다. will.images는 해시된 문자열입니다.
-     */
+      // 관리자용 체인코드 전체 유언장  상세정보
     async GetWillDetailsByAdmin(stub, args) {
         console.info('--- GetWillDetailsByAdmin ---');
         if (args.length !== 2) {
@@ -404,11 +366,7 @@ const ABstore = class {
         return Buffer.from(JSON.stringify(will)); // will.images는 해시된 문자열 상태로 반환
     }
 
-    /**
-     * UpdateWillStatusByAdmin (shim 스타일)
-     * params: [hashedWillID, newStatus, adminToken]
-     * 참고: newStatus는 해시되지 않은 원본 상태 문자열 (예: "ACTIVE")
-     */
+// 유언장 상태변화 체인코드 (중요)
     async UpdateWillStatusByAdmin(stub, args) {
         console.info('--- UpdateWillStatusByAdmin ---');
         if (args.length !== 3) {
@@ -451,6 +409,7 @@ const ABstore = class {
         console.info(`Successfully updated status of will (HASHED ID '${hashedWillID}') to '${newStatus}'`);
         return Buffer.from(`Status of will (HASHED ID '${hashedWillID}') updated to '${newStatus}' successfully.`);
     }
+    // 사용자의 유언장별 상태 개수
     async GetWillStatusCountsByTestatorId(stub, args) {
         console.info('--- GetWillStatusCountsByTestatorId ---');
         if (args.length !== 1) {
@@ -500,5 +459,6 @@ const ABstore = class {
         console.info(`Found status counts for HASHED testatorId '${hashedTestatorIdToSearch}':`, JSON.stringify(statusCounts));
         return Buffer.from(JSON.stringify(statusCounts));
     }
+
 };
 shim.start(new ABstore());
