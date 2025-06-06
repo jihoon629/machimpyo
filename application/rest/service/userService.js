@@ -110,7 +110,7 @@ async function registerUserService(userData) {
         throw error;
     } finally {
         if (connection) connection.release();
-    }
+    }   
 }
 /**
  * 사용자 로그인 서비스

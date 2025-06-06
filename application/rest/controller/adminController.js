@@ -39,7 +39,7 @@ async function isNotAdmin(req) {
         }
 
         const userRole = rows[0].role;
-        if (userRole === 'admin') {
+        if (userRole === 'NOTARY') {
             console.info(`isNotAdmin: User '${usernameForCheck}' has role '${userRole}'. Returning false (is an admin).`);
             return false; // 관리자이므로 false 반환
         } else {
@@ -193,6 +193,8 @@ async function getAllWills(req, res) {
         res.status(statusCode).json({ error: errorMessage });
     }
 }
+
+
 async function getWillDetailById(req, res) {
     let logUsername = 'N/A';
     // ... (기존 사용자 로깅 부분 유지) ...

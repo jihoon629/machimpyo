@@ -205,6 +205,8 @@ async function getMyWillsService(username) {
         if (resultBuffer && resultBuffer.length > 0) {
             const userWills = JSON.parse(resultBuffer.toString());
             console.log(`Service: Found ${userWills.length} wills for HASHED username '${hashedUsername}' from chaincode.`);
+            // 여기에 정보 보강 로직을 추가할 수도 있음 (getMyWillsService에도 필요한 경우)
+            // 하지만 현재 요청은 getWillsViewableByUserService에 대한 것이므로 여기는 일단 유지
             return userWills;
         }
 
@@ -227,7 +229,7 @@ async function getMyWillsService(username) {
  * 사용자의 이름과 전화번호는 해시하여 체인코드에 전달합니다.
  */
 async function getWillsViewableByUserService(username) {
-    console.log(`Service: Fetching wills viewable by user '${username}'`);
+    console.log(`Service: Fetching wills viewable by user '${username}' (viewer)`);
     if (!username) {
         const error = new Error("사용자 이름(username)이 필요합니다.");
         error.status = 400;
@@ -240,55 +242,109 @@ async function getWillsViewableByUserService(username) {
         if (userDetails && userDetails.realName && userDetails.phone) {
             viewerIdentityForChaincode.name = calculateHash(userDetails.realName);
             viewerIdentityForChaincode.phone = calculateHash(userDetails.phone);
-            console.log(`Service: User details for '${username}' fetched and hashed for viewerIdentity.`);
+            console.log(`Service: User details for viewer '${username}' fetched and hashed for viewerIdentity.`);
         } else {
-            console.warn(`Service: User details (realName or phone) incomplete for '${username}'. Cannot effectively query viewable wills with blank hashes.`);
-            // 이름/전화번호가 없으면 빈 해시로 조회 시도, 결과는 빈 목록일 가능성 높음
-             viewerIdentityForChaincode.name = calculateHash("");
-             viewerIdentityForChaincode.phone = calculateHash("");
-            // 또는, 여기서 바로 빈 배열 반환 또는 사용자에게 정보 업데이트 요청 오류 반환
-            // return [];
+            console.warn(`Service: User details (realName or phone) incomplete for viewer '${username}'. Querying with blank hashes.`);
+            viewerIdentityForChaincode.name = calculateHash("");
+            viewerIdentityForChaincode.phone = calculateHash("");
         }
     } catch (userError) {
-        console.error(`Service: Error fetching user details for '${username}': ${userError.message}.`);
+        console.error(`Service: Error fetching user details for viewer '${username}': ${userError.message}.`);
         if (userError.status === 404) {
-            const error = new Error(`사용자 '${username}'을(를) 찾을 수 없습니다.`);
+            const error = new Error(`지정 열람자 '${username}'을(를) 찾을 수 없습니다.`);
             error.status = 404;
             throw error;
         }
-        const serviceError = new Error("사용자 정보를 가져오는 중 오류가 발생했습니다.");
+        const serviceError = new Error("지정 열람자 사용자 정보를 가져오는 중 오류가 발생했습니다.");
         serviceError.status = userError.status || 500;
         serviceError.cause = userError;
         throw serviceError;
     }
 
     const viewerIdentityJSONStringToCompare = JSON.stringify(viewerIdentityForChaincode);
+    let connection; // DB 연결 변수
 
     try {
         console.log(`Service: Calling chaincode 'GetWillsViewableByMe' with HASHED ViewerIdentity: ${viewerIdentityJSONStringToCompare}`);
         const blockchainDataBuffer = await sdk.send(
-            true,
+            true, // Query
             'GetWillsViewableByMe',
             [viewerIdentityJSONStringToCompare]
         );
 
         if (!blockchainDataBuffer || blockchainDataBuffer.length === 0) {
-            console.log(`Service: No wills found viewable by user '${username}' (via hashed identity) or chaincode returned empty.`);
+            console.log(`Service: No wills found from chaincode for viewer '${username}' (via hashed identity).`);
             return [];
         }
 
-        const viewableWills = JSON.parse(blockchainDataBuffer.toString());
-        console.log(`Service: Successfully fetched ${viewableWills.length} wills viewable by user '${username}'.`);
-        return viewableWills;
+        const willsFromChaincode = JSON.parse(blockchainDataBuffer.toString());
+        console.log(`Service: Found ${willsFromChaincode.length} wills from chaincode for viewer '${username}'. Enriching with DB data...`);
+
+        if (willsFromChaincode.length === 0) {
+            return [];
+        }
+
+        connection = await pool.getConnection();
+        const enrichedWills = [];
+
+        for (const bcWill of willsFromChaincode) {
+            const willDbId = bcWill.offChainStorageRef;
+            let originalTitle = null;
+            let originalTestatorUsername = null; // Users 테이블의 email
+            let originalCreatedAt = bcWill.createdAt; // 기본값은 체인코드의 값
+
+            if (willDbId) {
+                try {
+                    const query = `
+                        SELECT 
+                            w.title AS dbTitle,
+                            w.created_at AS dbCreatedAt, 
+                            w.testator_id AS dbTestatorEmail 
+                        FROM Wills w
+                        WHERE w.id = ? 
+                    `;
+                    const [rows] = await connection.execute(query, [willDbId]);
+
+                    if (rows.length > 0) {
+                        originalTitle = rows[0].dbTitle;
+                        originalCreatedAt = rows[0].dbCreatedAt;
+                        originalTestatorUsername = rows[0].dbTestatorEmail;
+                        // 필요시 Users 테이블에서 dbTestatorEmail로 추가 정보(예: 이름) 조회 가능
+                    } else {
+                        console.warn(`[Service/getWillsViewableByUserService] DB에서 willDbId ${willDbId}에 해당하는 유언장 정보를 찾을 수 없습니다.`);
+                    }
+                } catch (dbError) {
+                    console.error(`[Service/getWillsViewableByUserService] DB 조회 중 오류 (willDbId: ${willDbId}): ${dbError.message}`);
+                }
+            } else {
+                console.warn(`[Service/getWillsViewableByUserService] 체인코드 유언장 데이터에 offChainStorageRef가 없습니다:`, bcWill);
+            }
+
+            enrichedWills.push({
+                ...bcWill,
+                originalTitle: originalTitle,
+                originalTestatorUsername: originalTestatorUsername,
+                createdAt: originalCreatedAt, // 프론트엔드에서 사용할 생성일시 (DB 값 우선)
+            });
+        }
+        
+        console.log(`Service: Finished enriching wills for viewer '${username}'. Total enriched wills: ${enrichedWills.length}`);
+        return enrichedWills;
 
     } catch (chaincodeError) {
-        console.error(`Service: Chaincode error during 'GetWillsViewableByMe' for user '${username}': ${chaincodeError.stack || chaincodeError}`);
+        console.error(`Service: Chaincode error during 'GetWillsViewableByMe' for viewer '${username}': ${chaincodeError.stack || chaincodeError}`);
         const serviceError = new Error(`지정 열람자 유언장 목록을 블록체인에서 가져오는 중 오류가 발생했습니다.`);
-        serviceError.status = 500;
+        serviceError.status = 500; // 또는 체인코드 오류 종류에 따라 다른 상태 코드
         serviceError.cause = chaincodeError;
         throw serviceError;
+    } finally {
+        if (connection) {
+            connection.release();
+            console.log("Service: DB connection released for getWillsViewableByUserService.");
+        }
     }
 }
+
 
 /**
  * DB WillImages 레코드 ID를 기반으로 특정 유언장 이미지를 직접 제공하는 서비스 함수입니다.
