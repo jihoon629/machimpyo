@@ -30,7 +30,7 @@ async function isNotAdmin(req) {
     console.log(`isNotAdmin: Checking admin status for user: ${usernameForCheck}`);
 
     try {
-        const query = 'SELECT role FROM Users WHERE username = ?';
+        const query = 'SELECT role FROM Users WHERE email = ?';
         const [rows] = await pool.execute(query, [usernameForCheck]);
 
         if (rows.length === 0) {
