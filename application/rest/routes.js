@@ -7,6 +7,8 @@ const registerWillController = require('./controller/registerWillController');
 const ocrController = require('./controller/ocrController');
 const adminController = require('./controller/adminController');
 const mypageController =require('./controller/mypageController');
+const notaryController = require('./controller/notaryController'); // 공증인 컨트롤러 임포트 (파일명 확인)
+
 const router = express.Router();
 
 const storage = multer.memoryStorage();
@@ -39,5 +41,22 @@ router.get('/admin/wills/:willId', adminController.getWillDetailById); // 특정
 router.get('/mypage/status-counts/:username', mypageController.getMyWillStatusCounts);
 router.get('/kkk/:username',mypageController.getUserProfile);
 router.put('/admin/wills/:willId/status', adminController.updateWillStatusByAdmin);
+
+
+
+router.get(
+    '/notary/my-details', // 클라이언트 요청 경로: GET /api/notary/my-details
+    notaryController.getOwnNotaryDetails 
+);
+// 2. "자신의" 공증인 상세 정보 생성 또는 업데이트 (UPSERT)
+//    컨트롤러(notaryController.upsertOwnNotaryDetails) 내부에서 임시로 사용자 ID를 처리합니다.
+router.put(
+    '/notary/details',    // 클라이언트 요청 경로: PUT /api/notary/details
+    notaryController.upsertOwnNotaryDetails
+);
+router.get(
+    '/notary/promotions/list', // 클라이언트 요청 경로: GET /api/notary/promotions/list
+    notaryController.getAllPublicPromotions
+);
 
 module.exports = router;

@@ -116,9 +116,10 @@ async function registerUserService(userData) {
  * 사용자 로그인 서비스
  */
 async function loginUserService(username, password) {
+    console.log(username,password);
     try {
         const [rows] = await pool.execute(
-            'SELECT id, email, name, phone, birth FROM Users WHERE email = ? AND password = ?', // 비밀번호는 제외하고 필요한 정보만 반환
+            'SELECT id, email, name, phone, birth,role FROM Users WHERE email = ? AND password = ?', // 비밀번호는 제외하고 필요한 정보만 반환
             [username, password]
         );
 
@@ -127,6 +128,7 @@ async function loginUserService(username, password) {
             error.status = 401; // Unauthorized
             throw error;
         }
+        console.log(rows[0]);
         // rows[0]에는 사용자 ID, 이름 등이 포함됨 (비밀번호 제외)
         return { message: '로그인 성공', user: rows[0] };
     } catch (error) {

@@ -2,282 +2,266 @@
 const pool = require('../db');
 
 /**
- * 공증인 ID를 기반으로 NotaryDetails 정보를 생성하거나 업데이트합니다 (UPSERT).
- * @param {string} userId - Users 테이블의 공증인 ID (VARCHAR(36))
- * @param {object} detailsData - 저장할 상세 정보 객체
- * @returns {object} 생성 또는 업데이트된 NotaryDetails 정보 (또는 성공 메시지)
+ * 사용자 ID(Users 테이블의 PK)를 기반으로 NotaryPromotions 테이블에서 홍보 정보를 조회합니다.
+ * @param {string} userId - Users 테이블의 공증인 PK (예: UUID)
+ * @returns {Promise<object | null>} NotaryPromotions 정보 객체. 정보가 없으면 null.
+ *          Users 정보(회사명, 이름, 이메일 등)도 함께 반환합니다.
  */
-async function upsertNotaryDetailsByUserId(userId, detailsData) {
+async function getPromotionByUserId(userId) {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        // Users 정보와 NotaryPromotions 정보를 JOIN
+        const query = `
+            SELECT 
+                u.id AS actualUserId,
+                u.email AS userEmail, 
+                u.name AS userName, 
+                u.company_name AS userCompanyName, 
+                u.phone AS userPhoneNumber,
+                np.id AS promotionId,      -- NotaryPromotions 테이블의 PK
+                np.company_phone,          -- NotaryPromotions.company_phone
+                np.consultation_phone,
+                np.phone_consultation_fee,
+                np.visit_consultation_fee,
+                np.tags,
+                np.description,
+                np.created_at AS promotionCreatedAt,
+                np.updated_at AS promotionUpdatedAt
+            FROM Users u
+            LEFT JOIN NotaryPromotions np ON u.id = np.user_id 
+            WHERE u.id = ? AND u.role = 'notary' 
+        `;
+        // userId는 Users 테이블의 PK여야 함.
+
+        const [rows] = await connection.execute(query, [userId]);
+
+        if (rows.length === 0) {
+            // 해당 PK의 공증인 역할 사용자가 없음
+            return null; 
+        }
+
+        const result = rows[0];
+        
+        let parsedTags = [];
+        if (result.tags && typeof result.tags === 'string') { // DB에서 JSON 문자열로 왔을 경우
+            try {
+                parsedTags = JSON.parse(result.tags);
+            } catch (e) {
+                console.error('[NotaryService getPromotionByUserId] Error parsing tags JSON:', e);
+            }
+        } else if (Array.isArray(result.tags)) { // 이미 배열 형태일 경우 (드라이버/DB 설정에 따라)
+            parsedTags = result.tags;
+        }
+
+        // NotaryPromotions 정보가 있는지 여부 (promotionId가 null이 아니면 정보가 있음)
+        if (result.promotionId) {
+            return {
+                // Users 정보
+                userId: result.actualUserId, 
+                email: result.userEmail,
+                userName: result.userName,
+                userCompanyName: result.userCompanyName,
+                userPhoneNumber: result.userPhoneNumber,
+                // NotaryPromotions 정보 (클라이언트가 기대하는 필드명과 일치)
+                promotion_id: result.promotionId, // NotaryPromotions의 PK (필요하다면)
+                company_phone: result.company_phone,
+                consultation_phone: result.consultation_phone,
+                phone_consultation_fee: result.phone_consultation_fee,
+                visit_consultation_fee: result.visit_consultation_fee,
+                tags: parsedTags,
+                description: result.description,
+                created_at: result.promotionCreatedAt, // NotaryPromotions의 생성일
+                updated_at: result.promotionUpdatedAt, // NotaryPromotions의 수정일
+            };
+        } else {
+            // NotaryPromotions 정보는 없지만, Users 정보는 있음
+            return {
+                userId: result.actualUserId,
+                email: result.userEmail,
+                userName: result.userName,
+                userCompanyName: result.userCompanyName,
+                userPhoneNumber: result.userPhoneNumber,
+                // 클라이언트가 이 경우 NotaryPromotions 관련 필드가 null 또는 undefined일 것을 예상해야 함
+                company_phone: null,
+                consultation_phone: null,
+                phone_consultation_fee: null,
+                visit_consultation_fee: null,
+                tags: [],
+                description: null,
+                message: '공증인 홍보 정보는 아직 등록되지 않았습니다.' 
+            };
+        }
+
+    } catch (error) {
+        console.error('[NotaryService getPromotionByUserId Error]:', error.message, error.stack);
+        const serviceError = new Error('공증인 홍보 정보 조회 중 오류가 발생했습니다.');
+        serviceError.status = 500; 
+        throw serviceError;
+    } finally {
+        if (connection) connection.release();
+    }
+}
+
+/**
+ * 공증인 ID(Users 테이블의 PK)와 홍보 데이터를 받아 NotaryPromotions 테이블에 정보를 생성하거나 업데이트합니다 (UPSERT).
+ * @param {string} userIdPk - Users 테이블의 PK (예: UUID).
+ * @param {object} promotionData - 저장할 홍보 정보 객체 (클라이언트에서 온 필드명 그대로 사용)
+ * @returns {Promise<object>} 생성 또는 업데이트된 NotaryPromotions 정보
+ */
+async function upsertPromotionByUserId(userIdPk, promotionData) {
     const {
-        company_phone,
-        consultation_phone,
-        phone_consultation_fee,
-        visit_consultation_fee,
-        tags, // 배열 형태 ['태그1', '태그2']
-        description
-    } = detailsData;
+        company_phone, consultation_phone, phone_consultation_fee,
+        visit_consultation_fee, tags, description
+    } = promotionData; // 클라이언트가 보낸 필드명 그대로 사용
 
     let connection;
     try {
         connection = await pool.getConnection();
         await connection.beginTransaction();
 
-        // tags 배열을 JSON 문자열로 변환 (DB에 JSON 타입으로 저장 시)
-        // tags가 null이거나 빈 배열일 경우 DB에 NULL 또는 '[]'로 저장되도록 처리
+        // tags는 JSON 문자열로 변환, undefined나 빈 배열이면 null
         const tagsJson = (tags && Array.isArray(tags) && tags.length > 0) ? JSON.stringify(tags) : null;
 
-        // 1. 기존 정보가 있는지 확인
+        // undefined를 null로 변환 (DB에 undefined가 들어가지 않도록)
+        const finalCompanyPhone = company_phone === undefined ? null : company_phone;
+        const finalConsultationPhone = consultation_phone === undefined ? null : consultation_phone;
+        const finalPhoneFee = phone_consultation_fee === undefined ? null : phone_consultation_fee;
+        const finalVisitFee = visit_consultation_fee === undefined ? null : visit_consultation_fee;
+        const finalDescription = description === undefined ? null : description;
+
         const [existingRows] = await connection.execute(
-            'SELECT id FROM NotaryDetails WHERE user_id = ?',
-            [userId]
+            'SELECT id FROM NotaryPromotions WHERE user_id = ?',
+            [userIdPk]
         );
 
-        let result;
-        if (existingRows.length > 0) {
-            // 정보가 이미 존재하면 업데이트
-            const notaryDetailId = existingRows[0].id;
-            console.log(`[NotaryService] Updating details for user_id: ${userId}, notary_detail_id: ${notaryDetailId}`);
-            const [updateResult] = await connection.execute(
-                `UPDATE NotaryDetails SET 
+        let resultData;
+        if (existingRows.length > 0) { // 업데이트
+            const promotionId = existingRows[0].id;
+            await connection.execute(
+                `UPDATE NotaryPromotions SET 
                     company_phone = ?, consultation_phone = ?, 
                     phone_consultation_fee = ?, visit_consultation_fee = ?, 
                     tags = ?, description = ?, updated_at = CURRENT_TIMESTAMP
                  WHERE id = ?`,
                 [
-                    company_phone || null,
-                    consultation_phone || null,
-                    phone_consultation_fee || null,
-                    visit_consultation_fee || null,
-                    tagsJson, // JSON 문자열 또는 null
-                    description || null,
-                    notaryDetailId
+                    finalCompanyPhone, finalConsultationPhone,
+                    finalPhoneFee, finalVisitFee,
+                    tagsJson, finalDescription, 
+                    promotionId
                 ]
             );
-            result = { id: notaryDetailId, user_id: userId, ...detailsData, tags: tags }; // 반환 시에는 다시 배열로
-            console.log('[NotaryService] Details updated successfully, affectedRows:', updateResult.affectedRows);
-
-        } else {
-            // 정보가 없으면 새로 삽입
-            console.log(`[NotaryService] Inserting new details for user_id: ${userId}`);
+            resultData = { id: promotionId, user_id: userIdPk, ...promotionData }; // 원본 promotionData 반환
+        } else { // 삽입
             const [insertResult] = await connection.execute(
-                `INSERT INTO NotaryDetails 
+                `INSERT INTO NotaryPromotions 
                     (user_id, company_phone, consultation_phone, phone_consultation_fee, visit_consultation_fee, tags, description) 
                  VALUES (?, ?, ?, ?, ?, ?, ?)`,
                 [
-                    userId,
-                    company_phone || null,
-                    consultation_phone || null,
-                    phone_consultation_fee || null,
-                    visit_consultation_fee || null,
-                    tagsJson, // JSON 문자열 또는 null
-                    description || null
+                    userIdPk, finalCompanyPhone, finalConsultationPhone,
+                    finalPhoneFee, finalVisitFee,
+                    tagsJson, finalDescription
                 ]
             );
-            result = { id: insertResult.insertId, user_id: userId, ...detailsData, tags: tags };
-            console.log('[NotaryService] Details inserted successfully, new id:', insertResult.insertId);
+            resultData = { id: insertResult.insertId, user_id: userIdPk, ...promotionData };
         }
 
         await connection.commit();
-        return result;
+        // 반환되는 객체가 프론트엔드에서 사용하기 편하도록 원본 tags (배열)를 포함하도록 조정
+        if (resultData && tags) {
+            resultData.tags = tags; 
+        }
+        return resultData;
 
     } catch (error) {
         if (connection) await connection.rollback();
-        console.error('[NotaryService upsertNotaryDetailsByUserId Error]:', error.message, error.stack);
-        // 특정 DB 오류 코드에 따라 다른 상태 코드나 메시지 반환 가능
-        const serviceError = new Error('공증인 상세 정보 처리 중 오류가 발생했습니다.');
-        serviceError.status = error.status || 500; // DB 오류에서 status가 없을 수 있음
-        serviceError.cause = error;
-        throw serviceError;
-    } finally {
-        if (connection) connection.release();
-    }
-}
-
-/**
- * 사용자 ID (공증인)를 기반으로 NotaryDetails 정보를 조회합니다.
- * @param {string} userId - Users 테이블의 공증인 ID
- * @returns {object | null} NotaryDetails 정보 객체 또는 null (정보가 없을 경우)
- */
-async function getNotaryDetailsByUserId(userId) {
-    let connection;
-    try {
-        connection = await pool.getConnection();
-        const [rows] = await connection.execute(
-            'SELECT * FROM NotaryDetails WHERE user_id = ?',
-            [userId]
-        );
-
-        if (rows.length === 0) {
-            return null; // 정보 없음
-        }
-
-        const notaryDetail = rows[0];
-        // tags가 JSON 문자열로 저장되어 있다면 다시 배열로 파싱
-        if (notaryDetail.tags && typeof notaryDetail.tags === 'string') {
-            try {
-                notaryDetail.tags = JSON.parse(notaryDetail.tags);
-            } catch (e) {
-                console.error('[NotaryService getNotaryDetailsByUserId] Error parsing tags JSON:', e);
-                notaryDetail.tags = []; // 파싱 오류 시 빈 배열로 처리
-            }
-        } else if (notaryDetail.tags === null || notaryDetail.tags === undefined) {
-             notaryDetail.tags = []; // DB에 NULL이면 빈 배열로
-        }
-        // MariaDB/MySQL의 JSON 타입은 드라이버에 따라 이미 객체/배열로 반환될 수 있음. 이 경우 파싱 불필요.
-        // 위 로직은 tags가 문자열로 반환된다고 가정. 실제 반환 타입을 보고 조정.
-
-        return notaryDetail;
-
-    } catch (error) {
-        console.error('[NotaryService getNotaryDetailsByUserId Error]:', error.message, error.stack);
-        const serviceError = new Error('공증인 상세 정보 조회 중 오류가 발생했습니다.');
+        console.error('[NotaryService upsertPromotionByUserId Error]:', error.message, error.stack);
+        const serviceError = new Error('공증인 홍보 정보 처리 중 DB 오류가 발생했습니다.');
         serviceError.status = 500;
-        serviceError.cause = error;
         throw serviceError;
     } finally {
         if (connection) connection.release();
     }
 }
 
-/**
- * 공개용 공증인 프로필 정보를 사용자 ID 기반으로 조회합니다.
- * Users 테이블과 NotaryDetails 테이블을 조인하여 정보를 가져옵니다.
- * @param {string} userId - Users 테이블의 공증인 ID
- * @returns {object | null} 공증인 프로필 정보 객체 또는 null
- */
-async function getPublicNotaryProfileByUserId(userId) {
+// (getUserProfileForNotaryPage 함수는 그대로 사용 가능 - Users 테이블 조회용)
+async function getUserProfileForNotaryPage(userIdentifier, identifierType = 'email') {
     let connection;
     try {
         connection = await pool.getConnection();
-        // Users 테이블에서 role='notary' 인 사용자만 조회하도록 조건 추가
-        const query = `
-            SELECT 
-                u.id AS userId, 
-                u.email, 
-                u.name, 
-                u.phone AS user_personal_phone, -- Users 테이블의 phone
-                u.address AS company_main_address, -- Users 테이블의 address (회사 대표 주소로 사용)
-                u.company_name, 
-                u.registration_number,
-                nd.id AS notary_detail_id,
-                nd.company_phone, 
-                nd.consultation_phone,
-                nd.phone_consultation_fee,
-                nd.visit_consultation_fee,
-                nd.tags,
-                nd.description,
-                nd.created_at AS details_created_at,
-                nd.updated_at AS details_updated_at
-            FROM Users u
-            LEFT JOIN NotaryDetails nd ON u.id = nd.user_id
-            WHERE u.id = ? AND u.role = 'notary' 
-        `;
-        // LEFT JOIN: NotaryDetails 정보가 아직 없을 수도 있으므로 Users 정보는 항상 가져옴
-
-        const [rows] = await connection.execute(query, [userId]);
-
-        if (rows.length === 0) {
-            return null; // 해당 ID의 공증인이 없거나, role이 notary가 아님
-        }
-
-        const profile = rows[0];
-
-        // tags 처리 (getNotaryDetailsByUserId와 동일한 로직)
-        if (profile.tags && typeof profile.tags === 'string') {
-            try {
-                profile.tags = JSON.parse(profile.tags);
-            } catch (e) {
-                console.error('[NotaryService getPublicNotaryProfileByUserId] Error parsing tags JSON:', e);
-                profile.tags = [];
-            }
-        } else if (profile.tags === null || profile.tags === undefined) {
-            profile.tags = [];
+        let query;
+        // 실제 Users 테이블의 PK를 actualUserId로, email을 userEmail로 반환하도록 통일
+        if (identifierType === 'id') {
+            query = 'SELECT id AS actualUserId, email AS userEmail, name AS userName, company_name AS userCompanyName, phone AS userPhoneNumber FROM Users WHERE id = ? AND role = \'notary\'';
+        } else { 
+            query = 'SELECT id AS actualUserId, email AS userEmail, name AS userName, company_name AS userCompanyName, phone AS userPhoneNumber FROM Users WHERE email = ? AND role = \'notary\'';
         }
         
-        // 불필요하거나 민감한 정보 제거 (예: 사용자의 해시된 비밀번호 등은 SELECT하지 않음)
-        // 위 쿼리에서는 이미 필요한 정보만 SELECT 하고 있음
-
-        return profile;
-
+        const [rows] = await connection.execute(query, [userIdentifier]);
+        if (rows.length > 0) {
+            return rows[0]; // { actualUserId, userEmail, userName, ... }
+        }
+        return null;
     } catch (error) {
-        console.error('[NotaryService getPublicNotaryProfileByUserId Error]:', error.message, error.stack);
-        const serviceError = new Error('공개용 공증인 프로필 조회 중 오류가 발생했습니다.');
-        serviceError.status = 500;
-        serviceError.cause = error;
-        throw serviceError;
+        console.error(`[NotaryService getUserProfileForNotaryPage Error for ${userIdentifier}]:`, error.message, error.stack);
+        throw new Error('사용자 프로필 조회 중 오류 발생');
     } finally {
         if (connection) connection.release();
     }
 }
 
-/**
- * (선택적 구현) 공개용 전체 공증인 목록을 조회합니다.
- * 페이지네이션, 검색, 필터링 등을 위한 options 객체를 받을 수 있습니다.
- */
-async function getAllPublicNotariesList(options = {}) {
-    // const { page = 1, limit = 10, searchTerm = '', tagsFilter = [] } = options;
-    // const offset = (page - 1) * limit;
+
+async function getAllActivePromotions() {
     let connection;
     try {
         connection = await pool.getConnection();
-        // TODO: 검색어, 태그 필터, 페이지네이션을 적용한 동적 쿼리 구성 필요
-        // 기본 목록 조회 (Users 정보와 NotaryDetails의 간단한 정보)
         const query = `
             SELECT 
                 u.id AS userId, 
-                u.name, 
-                u.company_name,
-                u.address AS company_main_address,
-                nd.tags,
-                SUBSTRING(nd.description, 1, 100) AS short_description -- 예시: 설명 앞부분만
-                -- 필요한 다른 요약 정보 추가 가능
+                u.email AS userEmail, 
+                u.name AS userName, 
+                u.company_name AS userCompanyName, 
+                u.phone AS userPhoneNumber,      -- Users 테이블의 정보
+                np.id AS promotionId,
+                np.company_phone,               -- NotaryPromotions 테이블의 정보
+                np.consultation_phone,
+                np.phone_consultation_fee,
+                np.visit_consultation_fee,
+                np.tags,                        -- JSON 문자열 또는 파싱된 배열 (DB 설정에 따라)
+                np.description,
+                np.created_at AS promotionCreatedAt,
+                np.updated_at AS promotionUpdatedAt
             FROM Users u
-            LEFT JOIN NotaryDetails nd ON u.id = nd.user_id
-            WHERE u.role = 'notary'
-            -- AND (u.name LIKE ? OR u.company_name LIKE ? OR nd.description LIKE ?) -- 검색어 예시
-            -- AND JSON_CONTAINS(nd.tags, ?) -- 태그 필터 예시 (단일 태그)
-            -- ORDER BY u.name ASC -- 정렬 기준
-            -- LIMIT ? OFFSET ? -- 페이지네이션
+            JOIN NotaryPromotions np ON u.id = np.user_id 
+            ORDER BY np.updated_at DESC; -- 최근 수정된 순으로 정렬 (또는 다른 정렬 기준)
         `;
-        // const searchPattern = searchTerm ? `%${searchTerm}%` : '%';
-        // const params = [searchPattern, searchPattern, searchPattern, limit, offset];
-        // 실제 파라미터 구성은 검색/필터 조건에 따라 달라짐
-
-        // 우선 기본 목록만 가져오는 형태로 구현
         const [rows] = await connection.execute(query);
 
-        const notaries = rows.map(notary => {
-            if (notary.tags && typeof notary.tags === 'string') {
+        // 각 row의 tags 필드(JSON 문자열)를 배열로 파싱
+        return rows.map(row => {
+            let parsedTags = [];
+            if (row.tags && typeof row.tags === 'string') {
                 try {
-                    notary.tags = JSON.parse(notary.tags);
-                } catch (e) { notary.tags = []; }
-            } else if (notary.tags === null || notary.tags === undefined){
-                notary.tags = [];
+                    parsedTags = JSON.parse(row.tags);
+                } catch (e) {
+                    console.error('[NotaryService getAllActivePromotions] Error parsing tags JSON:', e);
+                }
+            } else if (Array.isArray(row.tags)) {
+                parsedTags = row.tags;
             }
-            return notary;
+            return { ...row, tags: parsedTags };
         });
-        
-        // TODO: 전체 공증인 수 (필터링 적용된)를 구하는 쿼리도 필요 (페이지네이션을 위해)
-        // const [[{totalNotaries}]] = await connection.execute('SELECT COUNT(*) as totalNotaries FROM Users WHERE role = \'notary\' /* + 필터 조건 */');
-
-        // return { notaries, totalNotaries, page, limit };
-        return notaries; // 우선 목록만 반환
 
     } catch (error) {
-        console.error('[NotaryService getAllPublicNotariesList Error]:', error.message, error.stack);
-        const serviceError = new Error('전체 공증인 목록 조회 중 오류가 발생했습니다.');
-        serviceError.status = 500;
-        serviceError.cause = error;
-        throw serviceError;
+        console.error('[NotaryService getAllActivePromotions Error]:', error.message, error.stack);
+        throw new Error('활성 공증인 홍보 목록 조회 중 오류가 발생했습니다.');
     } finally {
         if (connection) connection.release();
     }
 }
 
-
 module.exports = {
-    upsertNotaryDetailsByUserId,
-    getNotaryDetailsByUserId,
-    getPublicNotaryProfileByUserId,
-    getAllPublicNotariesList, // 추가된 함수
-};
+    getPromotionByUserId,
+    upsertPromotionByUserId,
+    getUserProfileForNotaryPage, 
+    getAllActivePromotions};
