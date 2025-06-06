@@ -23,40 +23,38 @@ router.get('/wills/designatedViewers-wills', getWillController.getDesignatedView
 router.get('/details/:willId', getWillController.getWillDetails); // 특정 유언장 상세 조회
 router.get('/image/:imageRecordId', getWillController.getWillImage);  //  이미지 직접 조회를 위한 라우트
 
-
+//유언장 작성 관련 라우트
 router.post('/register', registerWillController.registerWill);// 텍스트 전용 유언 등록
 router.post('/register-with-images', upload.array('imageFiles', MAX_IMAGE_COUNT), registerWillController.registerWillWithImage); //이미지 유언장등록
-
 router.post('/ocr/extract-text', upload.single('file'), ocrController.extractText); //ocr
 
+//회원가입 관련 라우트
 router.post('/auth/register', userinfoController.registerUser); //회원가입
 router.post('/auth/login', userinfoController.loginUser); //로그인
 router.get('/queryByName/:username', userinfoController.getUserDetailsByUsername); //이름이랑 전번찾기
 
+//관리자 관련 라우트
 router.get('/admin/users', adminController.getAllUsers); /// 전체 사용자 목록 조회
 router.delete('/admin/users/:username', adminController.deleteUser); // 유저 삭제
-
 router.get('/admin/wills', adminController.getAllWills); //전체 유언장 목록 조회
 router.get('/admin/wills/:willId', adminController.getWillDetailById); // 특정 유언장 상세 조회
 router.get('/mypage/status-counts/:username', mypageController.getMyWillStatusCounts);
-router.get('/kkk/:username',mypageController.getUserProfile);
-router.put('/admin/wills/:willId/status', adminController.updateWillStatusByAdmin);
+router.get('/kkk/:username',mypageController.getUserProfile); // 유저 정보 불러오기
+router.put('/admin/wills/:willId/status', adminController.updateWillStatusByAdmin); //유언장 상태 변경
 
 
-
+//공증인 관련 라우트
 router.get(
-    '/notary/my-details', // 클라이언트 요청 경로: GET /api/notary/my-details
+    '/notary/my-details', 
     notaryController.getOwnNotaryDetails 
-);
-// 2. "자신의" 공증인 상세 정보 생성 또는 업데이트 (UPSERT)
-//    컨트롤러(notaryController.upsertOwnNotaryDetails) 내부에서 임시로 사용자 ID를 처리합니다.
+); // 공증인의 정보를 불러오는 라우트
 router.put(
-    '/notary/details',    // 클라이언트 요청 경로: PUT /api/notary/details
+    '/notary/details',    
     notaryController.upsertOwnNotaryDetails
-);
+); //자신의 정보를 올리는 라우트
 router.get(
-    '/notary/promotions/list', // 클라이언트 요청 경로: GET /api/notary/promotions/list
+    '/notary/promotions/list',
     notaryController.getAllPublicPromotions
-);
+); // 현제 올려진 정보를 보여주는 라우트 
 
 module.exports = router;
